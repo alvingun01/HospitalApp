@@ -113,3 +113,105 @@ Always use the virtual environment python interpreter when running commands:
 * **Apply Migrations**: `.HospitalApp/bin/python Backend/manage.py migrate`
 * **Create Superuser**: `.HospitalApp/bin/python Backend/manage.py createsuperuser`
 * **Shell for Interactive Python**: `.HospitalApp/bin/python Backend/manage.py shell`
+
+---
+
+## 📚 Q&A: Core Concepts & FAQ
+
+### Q1: Do I need to migrate every time I change the models?
+**Yes, if it affects the database schema.**
+* **Run migrations** (`makemigrations` and `migrate`) when you:
+  * Add, delete, or rename models or fields.
+  * Alter field types (e.g. `CharField` to `TextField`).
+  * Add default values, change nullability (`null=True`), or add constraints (`unique=True`).
+* **No migrations needed** when you:
+  * Add or modify methods inside Python classes (e.g., `def __str__(self)`).
+  * Change form helper text or validation choices (e.g. `choices=[...]` or `help_text`).
+
+---
+
+### Q2: Can `CharField` be empty?
+**Yes.** Use `blank=True` to make it optional in Django forms/admin. 
+* By default, Django stores empty text inputs as an **empty string (`""`)** in the database.
+* **Avoid `null=True` on string fields** (like `CharField` and `TextField`) to prevent having two ways of showing empty data (`""` and `NULL`). 
+* **Exception**: Use `blank=True, null=True` if you also set `unique=True` (e.g. unique optional phone numbers), because databases consider duplicate empty strings `""` as non-unique, but allow multiple `NULL` entries.
+
+---
+
+### Q3: What is the difference between `TextField` and `CharField`?
+* **`CharField`**: Used for short, single-line text (names, titles). Maps to SQL `VARCHAR`. Requires `max_length`. Renders as `<input type="text">`.
+* **`TextField`**: Used for long, multi-line text (descriptions, bios, diagnoses). Maps to SQL `TEXT`. `max_length` is optional (usually only validated in forms, not in database). Renders as `<textarea>`.
+
+---
+
+### Q4: Why use a single User model with OneToOne profiles instead of individual Patient, Doctor, and Nurse models?
+1. **Unified Authentication**: Django’s built-in security and session/token manager require a single User table. If they were separate tables, logging in would require querying multiple tables to find the user.
+2. **DRY (Don't Repeat Yourself)**: Avoids duplicating common fields like name, email, password, and login timestamps.
+3. **Multi-role Accounts**: Allows a single user account to link to multiple profiles (e.g., a Nurse who also registers as a Patient).
+
+---
+
+### Q5: What is the benefit of a custom `create()` method inside nested serializers?
+1. **Consolidated Payload**: The frontend can send account details (username, password) and profile details (specialty, phone) in **one single API call**, rather than registering a user first, getting an ID, and making a second call.
+2. **Database Integrity (Atomicity)**: Ensures that if creating the profile fails, the user account creation is also rolled back, preventing orphaned accounts.
+3. **Role Enforcement**: Prevents clients from maliciously registering user accounts and setting their own roles (e.g. admin).
+
+---
+
+### Q6: Do we need a custom `create()` method for the `AppointmentSerializer`?
+**No.** Because the `Appointment` model uses flat fields and foreign key IDs (`patient`, `doctor`), Django REST Framework’s default serializer creation is already capable of resolving the foreign key relationships and inserting the record into the database automatically.
+
+---
+
+### Q7: What is the use of `views.py`?
+In Django/DRF, `views.py` acts as the Controller:
+* Receives incoming HTTP requests (GET, POST, etc.).
+* Runs logic (queries the database, checks authentication).
+* Passes database querysets through serializers to format them as JSON, and returns the HTTP responses.
+
+---
+
+### Q8: What does `queryset = DoctorProfile.objects.all()` do in `views.py`?
+It establishes the baseline set of database records that this view is allowed to interact with. DRF uses this queryset to perform all CRUD actions (like fetching all records or filtering for a specific record ID).
+
+---
+
+### Q9: Do router-registered URLs automatically support GET, POST, PUT, DELETE?
+**Yes.** When viewsets inheriting from `viewsets.ModelViewSet` are registered with a `DefaultRouter`, DRF automatically configures all standard CRUD endpoints (GET list, POST create, GET detail, PUT update, PATCH partial update, DELETE destroy) without you needing to write separate url patterns.
+
+---
+
+### Q10: How do I restrict a ViewSet to read-only (`GET` only)?
+* **Option A**: Inherit from `viewsets.ReadOnlyModelViewSet` instead of `ModelViewSet`.
+* **Option B**: Add `http_method_names = ['get']` to your ViewSet class.
+
+---
+
+### Q11: What else can I set a `queryset` as?
+You can filter, sort, or optimize queries:
+```python
+# Filter: Only show unpaid appointments
+queryset = Appointment.objects.filter(paid=False)
+
+# Sort: Newest appointments first
+queryset = Appointment.objects.all().order_by('-appointment_date')
+
+# Join: Preload linked profile objects (avoids performance issues)
+queryset = Appointment.objects.select_related('patient__user', 'doctor__user')
+```
+
+---
+
+### Q12: What does `class Meta` do in serializers?
+It is an inner class that holds metadata configuration: specifying which `model` the serializer is bound to, and which `fields` from that model should be exposed as JSON.
+
+---
+
+### Q13: What does the `**` do in `**validated_data`?
+It is the **dictionary unpacking operator** in Python. It unpacks key-value pairs from a dictionary and passes them as keyword arguments into a function call. For example:
+`PatientProfile.objects.create(user=user, **validated_data)`
+
+---
+
+### Q14: Why does `super().create(validated_data)` call the create function inside itself?
+It doesn't call itself recursively; it calls the `create` method of the **parent class** (`serializers.ModelSerializer`). This allows Django to execute the standard object creation logic first, after which we can intercept the returned instance to hash the password securely and save it.

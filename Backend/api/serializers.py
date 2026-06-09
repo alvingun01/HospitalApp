@@ -74,3 +74,11 @@ class NurseProfileSerializer(serializers.ModelSerializer):
         
         nurse_profile = NurseProfile.objects.create(user=user, **validated_data)
         return nurse_profile
+
+# 5. Appointment Serializer
+from .models import Appointment
+
+class AppointmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Appointment
+        fields = ['id', 'patient', 'doctor', 'appointment_date', 'appointment_status', 'diagnosis', 'total_bills', 'paid', 'created_at', 'updated_at']
