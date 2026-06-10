@@ -278,4 +278,19 @@ urlpatterns = [
 1. **API Namespacing**: It separates your data endpoints (which return raw JSON) from other URLs on your server, such as the Django Admin panel (`/admin/`) or if Django was serving front-end static files/templates at the root (`/`).
 2. **Security & Proxy Rules**: In production, it makes it easy for server proxies (like Nginx) or firewalls to identify API traffic (e.g., routing any URL starting with `/api/` to the backend app, while serving static frontend files from storage directly).
 
+---
+
+### Q19: Does the term `ViewSet` mean the model can be "viewed" or "set"?
+Not quite! It is a literal translation, but `ViewSet` actually stands for a **"Set of Views"**.
+
+In standard Django, you would have to write multiple individual views (classes or functions) to handle different HTTP actions for a single model:
+1. `DoctorListView` (to list all doctors)
+2. `DoctorDetailView` (to see one doctor)
+3. `DoctorCreateView` (to make a new doctor)
+4. `DoctorUpdateView` (to edit a doctor)
+5. `DoctorDeleteView` (to delete a doctor)
+
+A **ViewSet** combines all of these related views into **one single class**. It groups operations like `list`, `retrieve`, `create`, `update`, and `destroy` together so you don't have to duplicate configuration files or routing logic.
+
+
 
