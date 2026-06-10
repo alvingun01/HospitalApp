@@ -292,5 +292,179 @@ In standard Django, you would have to write multiple individual views (classes o
 
 A **ViewSet** combines all of these related views into **one single class**. It groups operations like `list`, `retrieve`, `create`, `update`, and `destroy` together so you don't have to duplicate configuration files or routing logic.
 
+---
 
+### Q20: What are `ListCreateAPIView` and `RetrieveUpdateDestroyAPIView`?
+In Django REST Framework (DRF), these are **Generic Views** used as an alternative to `ViewSets`. They are built-in, concrete views that combine specific database operations (called Mixins) to reduce boilerplate code.
 
+#### 1. `ListCreateAPIView`
+* **Purpose**: Used for collections of data (e.g., list of all doctors).
+* **HTTP Methods Allowed**: 
+  * `GET` (calls list operation)
+  * `POST` (calls create operation)
+* **Usually mapped to**: `/api/doctors/`
+
+#### 2. `RetrieveUpdateDestroyAPIView`
+* **Purpose**: Used for a specific single record (e.g., one doctor's details).
+* **HTTP Methods Allowed**: 
+  * `GET` (calls retrieve operation)
+  * `PUT` / `PATCH` (calls update/partial_update operations)
+  * `DELETE` (calls destroy operation)
+* **Usually mapped to**: `/api/doctors/<id>/`
+
+#### ⚖️ ViewSets vs Generic Views:
+* **Generic Views** require you to write **two classes** per model (one for the list/create endpoint, and one for the detail/update/delete endpoint) and map their URLs manually in `urls.py`:
+  ```python
+  # urls.py
+  path('doctors/', DoctorListCreateView.as_view()),
+  path('doctors/<int:pk>/', DoctorRetrieveUpdateDestroyView.as_view()),
+  ```
+* **ViewSets** (which we used in our codebase) combine **both classes into a single class** (`DoctorViewSet`) and let Django's `DefaultRouter` automatically generate and bind the URLs for you. This is why ViewSets are often preferred for standard CRUD operations.
+
+---
+
+### Q21: What is the syntax of an AngularJS Factory?
+In AngularJS, a **Factory** is used to share code, functions, or data across different parts of your application (like controllers). 
+
+The syntax uses the **Inline Array Annotation** pattern, which is the industry standard because it prevents errors when minifying/obfuscating JavaScript files for production:
+
+```javascript
+angular.module("yourModuleName")
+  .factory("yourFactoryName", ["dependency1", "dependency2", function(dependency1, dependency2) {
+      // 1. Declare private variables or helper logic here
+      const privateKey = "xyz123";
+
+      // 2. Define the public API object that will be exposed
+      const serviceObject = {
+          getData: function() {
+              return dependency1.get('/some-endpoint');
+          },
+          checkKey: function() {
+              return privateKey;
+          }
+      };
+
+      // 3. MANDATORY: A factory MUST return the serviceObject instance
+      return serviceObject;
+  }]);
+```
+
+#### Key Rules:
+1. **Module Hook**: `angular.module("yourModuleName")` (without the second argument `[]`) retrieves the already defined module.
+2. **Minification Safety**: The array starts with dependency string names (e.g. `"$http"`) and ends with the factory function. The parameters of the function must match the string order.
+3. **Return Value**: Unlike an AngularJS `service` (which uses a constructor function and `this`), an AngularJS `factory` is a regular function that **must explicitly return an object** containing the methods/properties you want to share.
+---
+
+### Q22: How is Login and Registration implemented in the Django backend?
+We set up a secure authentication flow using Django REST Framework's **Token Authentication** (`rest_framework.authtoken`).
+
+#### 1. Setup & Configuration:
+* Added `'rest_framework.authtoken'` to `INSTALLED_APPS` in [settings.py](file:///Users/alvin/Documents/HospitalApp/Backend/config/settings.py).
+* Set `TokenAuthentication` as the default authentication scheme.
+* Ran migrations (`python manage.py migrate`) to create the tokens table.
+
+#### 2. The Login Endpoint (`/api/auth/login/`):
+* Defined `LoginView(APIView)` in [views.py](file:///Users/alvin/Documents/HospitalApp/Backend/api/views.py).
+* Receives a `username` (email) and `password`.
+* Uses Django's `authenticate()` method to safely verify credentials.
+* On success, generates or retrieves a unique token using `Token.objects.get_or_create()` and returns both the **token key** and user metadata (ID, email, name, role) back to the frontend.
+
+#### 3. The Registration Endpoint (`/api/auth/register/`):
+* Defined `RegisterView(APIView)` in [views.py](file:///Users/alvin/Documents/HospitalApp/Backend/api/views.py).
+* Receives `name`, `email`, and `password`.
+* Checks if a user already exists with that email.
+* Splits the single `name` string into `first_name` and `last_name`.
+* Creates the user account using `CustomUser.objects.create_user()` (which encrypts the password securely).
+* Automatically instantiates an empty `PatientProfile` linked to the user account.
+* Generates an authentication token and returns it alongside the user metadata, automatically logging them in.
+
+---
+
+### Q23: What is `APIView`?
+In Django REST Framework (DRF), `APIView` is the base class used to build custom API endpoints. It subclasses Django's standard `View` class but provides enhancements tailored for web APIs:
+1. **DRF Request & Response**: It automatically wraps incoming Django HTTP requests into DRF's `Request` object (allowing you to read JSON directly using `request.data`) and handles output formatting through DRF's `Response` object.
+2. **HTTP Verb Methods**: Instead of writing conditional statements like `if request.method == 'GET'`, you define clean methods matching HTTP verbs: `def get(self, request):`, `def post(self, request):`, etc.
+3. **API Policies**: It allows you to specify custom policies (like permissions, authentication, or throttling rules) as class-level attributes, overriding global settings.
+
+---
+
+### Q24: How do I protect backend endpoints behind authentication?
+In DRF, endpoints are protected using **Permission Classes**. Since we set the default authentication scheme to `TokenAuthentication`, we protect our views by requiring requests to have a valid session token:
+
+#### Method 1: Global Protection (Our Implementation)
+We set the default permission class to `IsAuthenticated` in **[settings.py](file:///Users/alvin/Documents/HospitalApp/Backend/config/settings.py)**:
+```python
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated', # <--- Protects everything by default
+    ],
+}
+```
+For public endpoints like Login and Registration, we explicitly override the default by setting `permission_classes = []` directly in the view class in `views.py`.
+
+#### Method 2: Per-View Protection
+Alternatively, you can protect individual views or viewsets directly by adding the `permission_classes` attribute to the class:
+```python
+from rest_framework.permissions import IsAuthenticated
+from rest_framework import viewsets
+
+class DoctorViewSet(viewsets.ModelViewSet):
+    queryset = DoctorProfile.objects.all()
+    serializer_class = DoctorProfileSerializer
+    permission_classes = [IsAuthenticated] # <--- Require authentication for this viewset only
+```
+When a view is protected, clients must include the token in the HTTP Header of their requests:
+`Authorization: Token your_token_key_here`
+If the header is missing or the token is invalid, DRF will automatically block the request and return `401 Unauthorized`.
+
+---
+
+### Q25: Why is `permission_classes` set to an empty list `[]` for Login and Register views?
+In Python and Django REST Framework, setting `permission_classes = []` serves two main purposes:
+
+1. **Overriding the Global Setting**: 
+   Since we defined a global permission setting in `settings.py` (`IsAuthenticated`), DRF protects **every view in the project** by default. Setting `permission_classes = []` on a specific view class tells DRF: *"Do not apply the global default permissions here. Override them with this custom list instead."*
+
+2. **Allowing Public Access**:
+   An empty list `[]` means there are **no permission restrictions** on this view. 
+   
+   This is critical for `/api/auth/login/` and `/api/auth/register/` because a user who is not logged in does not have a token yet. If we did not set `permission_classes = []`, those views would require token authentication to access, meaning users would be locked out from ever logging in or registering!
+
+---
+
+### Q26: How does the frontend handle and send the authorization token?
+Yes! That is the standard flow for token-based authentication. The steps are:
+
+#### 1. Save the Token on Login/Register:
+When the frontend receives a successful authentication response, it extracts the token and saves it in the browser's **`localStorage`**:
+```javascript
+// Inside your login/register controller response handler:
+localStorage.setItem('authToken', response.data.token);
+localStorage.setItem('currentUser', JSON.stringify(response.data.user));
+```
+
+#### 2. Attach the Token to Subsequent HTTP Requests:
+Every time the frontend calls a protected API endpoint (like fetching doctors or appointments), it must retrieve the token and add it to the **`Authorization`** HTTP header.
+
+In **AngularJS**, you can configure this globally (so you don't have to write it for every `$http` request manually) by setting the default headers during module launch:
+```javascript
+angular.module("hospitalApp").run(["$http", function($http) {
+    const token = localStorage.getItem('authToken');
+    if (token) {
+        // Automatically attach the token to all future HTTP requests
+        $http.defaults.headers.common['Authorization'] = 'Token ' + token;
+    }
+}]);
+```
+
+#### 3. Clear Token on Logout:
+When logging out, clear the stored token to end the session:
+```javascript
+localStorage.removeItem('authToken');
+localStorage.removeItem('currentUser');
+// Clear the default header
+delete $http.defaults.headers.common['Authorization'];
+```
