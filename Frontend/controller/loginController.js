@@ -2,6 +2,11 @@ angular.module("hospitalApp").controller("LoginController", ["$scope", "httpServ
     $scope.email = "";
     $scope.password = "";
     $scope.errorMessage = "";
+    $scope.showPassword = false;
+
+    $scope.togglePassword = function () {
+        $scope.showPassword = !$scope.showPassword;
+    }
 
     $scope.login = () => {
         $scope.errorMessage = ""; // Reset error message

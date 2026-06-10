@@ -9,6 +9,11 @@ angular.module("hospitalApp").controller("RegisterController", ["$scope", "httpS
     $scope.zip_code = "";
     $scope.country = "";
     $scope.errorMessage = "";
+    $scope.showPassword = false;
+
+    $scope.togglePassword = function () {
+        $scope.showPassword = !$scope.showPassword;
+    }
 
     $scope.register = function () {
         $scope.errorMessage = ""; // Reset error message
