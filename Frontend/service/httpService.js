@@ -5,8 +5,8 @@ angular.module("hospitalApp").factory("httpService", ["$http", function ($http) 
         login(email, password) {
             return $http.post(`${BASE_URL}/auth/login/`, { email, password })
         },
-        register(name, email, password) {
-            return $http.post(`${BASE_URL}/auth/register/`, { name, email, password })
+        register(name, email, password, phone, address, city, state, zip_code, country) {
+            return $http.post(`${BASE_URL}/auth/register/`, { name, email, password, phone, address, city, state, zip_code, country })
         },
         getDoctors() {
             return $http.get(`${BASE_URL}/doctors/`)

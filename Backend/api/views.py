@@ -53,11 +53,11 @@ class LoginView(APIView):
     permission_classes = []  # Allow unauthenticated users to access this endpoint
 
     def post(self, request):
-        username = request.data.get('username')
+        email = request.data.get('email') or request.data.get('username')
         password = request.data.get('password')
 
         # Authenticate user credentials
-        user = authenticate(username=username, password=password)
+        user = authenticate(username=email, password=password)
         if user is not None:
             # Generate or retrieve token
             token, _ = Token.objects.get_or_create(user=user)
@@ -87,6 +87,14 @@ class RegisterView(APIView):
         email = request.data.get('email')
         password = request.data.get('password')
 
+        # Extract profile details from payload
+        phone = request.data.get('phone', '')
+        address = request.data.get('address', '')
+        city = request.data.get('city', '')
+        state = request.data.get('state', '')
+        zip_code = request.data.get('zip_code', '')
+        country = request.data.get('country', '')
+
         if not email or not password:
             return Response({'error': 'Email and password are required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -111,8 +119,16 @@ class RegisterView(APIView):
                     role='patient'  # Default role is Patient
                 )
                 
-                # 2. Create the associated PatientProfile record
-                PatientProfile.objects.create(user=user)
+                # 2. Create the associated PatientProfile record with the supplied fields
+                PatientProfile.objects.create(
+                    user=user,
+                    phone=phone,
+                    address=address,
+                    city=city,
+                    state=state,
+                    zip_code=zip_code,
+                    country=country
+                )
                 
                 # 3. Create authentication token
                 token, _ = Token.objects.get_or_create(user=user)

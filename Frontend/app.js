@@ -3,7 +3,8 @@ app = angular.module("hospitalApp", ["ngRoute"])
 app.config(function ($routeProvider) {
     $routeProvider
         .when("/", {
-            templateUrl: "views/home.html"
+            templateUrl: "views/home.html",
+            controller: "HomeController"
         })
         .when("/login", {
             templateUrl: "views/login.html",
@@ -26,3 +27,14 @@ app.config(function ($routeProvider) {
             redirectTo: "/"
         })
 })
+
+app.run(["$rootScope", "$location", function ($rootScope, $location) {
+    $rootScope.$on("$routeChangeStart", function (event, next, current) {
+        const token = localStorage.getItem("token");
+        const isPublicRoute = next && (next.templateUrl === "views/login.html" || next.templateUrl === "views/register.html");
+
+        if (!token && !isPublicRoute) {
+            $location.path("/login");
+        }
+    });
+}]);
