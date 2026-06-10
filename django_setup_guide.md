@@ -1039,3 +1039,58 @@ Used for destructive actions like "Logout" or deletion. It uses a low-opacity re
 }
 ```
 These classes can be combined with SVG icons inside the markup to give a premium, polished feel.
+
+---
+
+### Q50: How is the password visibility toggle implemented using AngularJS and CSS?
+To implement a clean, integrated password toggle that displays inside the password textbox without breaking layout rules:
+
+1. **AngularJS State**:
+   We initialize `showPassword = false` on the scope (e.g., inside `loginController.js` and `registerController.js`), and define a function `togglePassword()` to flip the boolean value:
+   ```javascript
+   $scope.showPassword = false;
+   $scope.togglePassword = function() {
+       $scope.showPassword = !$scope.showPassword;
+   };
+   ```
+
+2. **Dynamic HTML Attribute (`ng-attr-type`)**:
+   We bind the input `type` dynamically using AngularJS's `ng-attr-type` directive. This dynamically switches the DOM attribute between `'password'` (obscured) and `'text'` (visible) without recreating the input element:
+   ```html
+   <input ng-attr-type="{{ showPassword ? 'text' : 'password' }}" class="form-input" />
+   ```
+
+3. **Styling Wrapper & Absolute Positioning (CSS)**:
+   We wrap the input and the eye toggle button inside a relative container (`.password-wrapper`) and position the toggle button absolutely:
+   ```css
+   .password-wrapper {
+       position: relative;
+       width: 100%;
+       display: flex;
+       align-items: center;
+   }
+   
+   .password-wrapper .form-input {
+       padding-right: 48px; /* Prevents text from flowing behind the eye icon */
+   }
+   
+   .password-toggle {
+       position: absolute;
+       right: 12px;
+       background: none;
+       border: none;
+       color: var(--text-secondary);
+       cursor: pointer;
+       padding: 6px;
+       display: flex;
+       align-items: center;
+       justify-content: center;
+       transition: var(--transition);
+       border-radius: 6px;
+       z-index: 10;
+   }
+   ```
+
+4. **Toggle SVG Icons**:
+   We place two SVGs inside the button, showing and hiding them using `ng-if="!showPassword"` (eye icon) and `ng-if="showPassword"` (slashed eye icon) to visually indicate the state.
+
