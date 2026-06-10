@@ -33,9 +33,9 @@ html {
 
 body {
     font-family: 'Inter', sans-serif;
-    background: radial-gradient(circle at 10% 20%, rgba(14, 165, 233, 0.08) 0%, transparent 40%), 
-                radial-gradient(circle at 90% 80%, rgba(20, 184, 166, 0.08) 0%, transparent 40%), 
-                #070a13;
+    background: radial-gradient(circle at 10% 20%, rgba(14, 165, 233, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(20, 184, 166, 0.08) 0%, transparent 40%),
+        #070a13;
     color: var(--text-primary);
     min-height: 100vh;
     line-height: 1.5;
@@ -49,7 +49,8 @@ body {
 .auth-container {
     width: 100%;
     max-width: 480px;
-    margin: 60px auto; /* Centers container horizontally and provides vertical margins for scrolling */
+    margin: 60px auto;
+    /* Centers container horizontally and provides vertical margins for scrolling */
 }
 
 /* Overriding inline style max-width from register.html */
@@ -139,7 +140,8 @@ body {
     font-family: inherit;
     font-size: 14.5px;
     color: var(--text-primary);
-    background-color: rgba(15, 23, 42, 0.6); /* High-contrast input background */
+    background-color: rgba(15, 23, 42, 0.6);
+    /* High-contrast input background */
     transition: var(--transition);
 }
 
@@ -151,7 +153,8 @@ body {
 }
 
 .form-input::placeholder {
-    color: #64748b; /* Highly readable input placeholder color */
+    color: #64748b;
+    /* Highly readable input placeholder color */
 }
 
 /* Action Button */
@@ -236,6 +239,7 @@ body {
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -244,11 +248,73 @@ body {
 
 /* Autofill Styles Override for Chrome/Safari */
 input:-webkit-autofill,
-input:-webkit-autofill:hover, 
+input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
     -webkit-box-shadow: 0 0 0 1000px #131d35 inset !important;
     -webkit-text-fill-color: var(--text-primary) !important;
     caret-color: var(--text-primary);
     transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Secondary & Danger Buttons */
+.btn-secondary {
+    padding: 10px 20px;
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--text-secondary);
+}
+
+.btn-danger {
+    padding: 10px 20px;
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn-danger:hover {
+    background: var(--error);
+    color: #fff;
+    border-color: var(--error);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Dashboard & Page Layouts */
+.home-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.header-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 16px;
+    margin-bottom: 32px;
 }

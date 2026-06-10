@@ -981,3 +981,61 @@ If you want to keep using the same email address but forgot the password:
    exit()
    ```
 3. You can now log in to the admin panel with the new password.
+
+---
+
+### Q49: How are secondary and danger buttons (like the logout button) styled in the HospitalApp?
+To create a premium look, the CSS has distinct button styles defined in [Frontend/css/style.css](file:///Users/alvin/Documents/HospitalApp/Frontend/css/style.css) for non-primary actions:
+
+#### 1. Secondary Button (`.btn-secondary`)
+Used for neutral actions, outline design, transparent background, and subtle hover borders.
+```css
+.btn-secondary {
+    padding: 10px 20px;
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--text-secondary);
+}
+```
+
+#### 2. Danger Button (`.btn-danger`)
+Used for destructive actions like "Logout" or deletion. It uses a low-opacity red background that turns solid red on hover.
+```css
+.btn-danger {
+    padding: 10px 20px;
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--error);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+.btn-danger:hover {
+    background: var(--error);
+    color: #fff;
+    border-color: var(--error);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+```
+These classes can be combined with SVG icons inside the markup to give a premium, polished feel.
