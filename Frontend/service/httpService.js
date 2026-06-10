@@ -2,8 +2,8 @@ angular.module("hospitalApp").factory("httpService", ["$http", function ($http) 
 
     const BASE_URL = "http://localhost:8000/api"
     return {
-        login(username, password) {
-            return $http.post(`${BASE_URL}/auth/login/`, { username, password })
+        login(email, password) {
+            return $http.post(`${BASE_URL}/auth/login/`, { email, password })
         },
         register(name, email, password) {
             return $http.post(`${BASE_URL}/auth/register/`, { name, email, password })

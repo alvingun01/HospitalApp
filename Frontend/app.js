@@ -5,6 +5,14 @@ app.config(function ($routeProvider) {
         .when("/", {
             templateUrl: "views/home.html"
         })
+        .when("/login", {
+            templateUrl: "views/login.html",
+            controller: "LoginController"
+        })
+        .when("/register", {
+            templateUrl: "views/register.html",
+            controller: "RegisterController"
+        })
         .when("/doctors", {
             templateUrl: "views/doctors.html"
         })

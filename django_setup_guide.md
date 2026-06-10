@@ -468,3 +468,44 @@ localStorage.removeItem('currentUser');
 // Clear the default header
 delete $http.defaults.headers.common['Authorization'];
 ```
+
+---
+
+### Q27: Should I create three separate signup pages for Patients, Doctors, and Nurses?
+**No, you should only create one public signup page (for Patients).**
+
+Here is why, from a security and usability perspective:
+
+1. **Patient Signup (Public)**:
+   Patients are the general public. They need to be able to visit your site, click "Sign Up", fill out a form, and create their account so they can log in and book appointments. This should have a public route (e.g. `/register` or `/signup`).
+
+2. **Doctor & Nurse Signup (Private / Admin-Managed)**:
+   You **must not** let the general public register as doctors or nurses. If you had a public signup page for doctors, anyone could register a fake account, access sensitive medical files, or write fake diagnoses!
+   
+   Instead, Doctor and Nurse accounts are created inside your system by **Administrators** (using the Django Admin Panel `/admin/` or an admin-only portal). Once the Admin creates the doctor/nurse credentials, the doctor or nurse can log in using the standard, single `/login` page.
+
+---
+
+### Q28: Is the `user` attribute on PatientProfile a "username" field?
+**No.** The field definition:
+```python
+user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='patient_profile')
+```
+is a **relationship field** (a One-to-One Foreign Key), not a plain text username field.
+
+#### What it does:
+1. It links the `PatientProfile` table directly to your `CustomUser` table in the database.
+2. It allows you to access user credentials (like their email or password) directly through the profile object using dot notation: `patient_profile.user.username` or `patient_profile.user.email`.
+3. Setting `on_delete=models.CASCADE` ensures that if a user account is deleted, their associated patient profile is automatically deleted as well, keeping the database clean.
+
+---
+
+### Q29: How do I configure Django's User model to log in with an email address instead of a username?
+To implement email-only authentication while subclassing `AbstractUser`, you configure three main things in your `models.py`:
+
+1. **Redefining Fields**: Set `email` as a unique database field, and override `username` to be unique but optional (`null=True, blank=True`).
+2. **Setting the Login Identifier**: Define `USERNAME_FIELD = 'email'` and set `REQUIRED_FIELDS = []`. This instructs Django's authentication system to look up users by their email during login.
+3. **Custom User Manager**: Inherit from `BaseUserManager` and write a custom manager class (`CustomUserManager`) that overrides `create_user` and `create_superuser`. Since Django's standard creation commands expect a `username` parameter, the custom manager handles populating the `username` field automatically behind the scenes (for example, duplicating the normalized email value into the username field so internal third-party dependencies don't crash).
+
+
+
