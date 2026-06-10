@@ -215,3 +215,67 @@ It is the **dictionary unpacking operator** in Python. It unpacks key-value pair
 
 ### Q14: Why does `super().create(validated_data)` call the create function inside itself?
 It doesn't call itself recursively; it calls the `create` method of the **parent class** (`serializers.ModelSerializer`). This allows Django to execute the standard object creation logic first, after which we can intercept the returned instance to hash the password securely and save it.
+
+---
+
+### Q15: Does the default user have an `id` field?
+**Yes.** In Django, if you do not explicitly define a primary key field (a field with `primary_key=True`) on your model, Django automatically creates an auto-incrementing primary key field named `id` behind the scenes. Because your `CustomUser` model inherits from `AbstractUser` (which inherits from Django's base model), it automatically includes this `id` field.
+
+---
+
+### Q16: Why did we initially need to supply `CustomUserSerializer()` as self and `validated_data=user_data` in the profile serializer?
+Because we called `CustomUserSerializer.create(...)` directly on the class rather than on an instance of the class. 
+
+In Python, instance methods expect `self` (an instance of the class) as the first argument. Since we called it directly on the class, Python does not automatically bind `self`, meaning we had to create and pass a dummy instance `CustomUserSerializer()` manually.
+
+*(Note: We have since refactored the code to instantiate the serializer first and call the method normally so Python handles `self` automatically:)*
+```python
+user_serializer = CustomUserSerializer()
+user = user_serializer.create(validated_data=user_data)
+```
+
+---
+
+### Q17: What are the endpoints I should hit from my frontend?
+By utilizing `DefaultRouter` and prefixing your app urls with `api/` in the main routing file, the following RESTful API endpoints are generated and mapped:
+
+| Resource | HTTP Method | URL Path | Action | Description |
+| :--- | :--- | :--- | :--- | :--- |
+| **Patients** | **GET** | `/api/patients/` | `list` | Retrieve list of all patient profiles |
+| | **POST** | `/api/patients/` | `create` | Create a new patient and user account |
+| | **GET** | `/api/patients/<id>/` | `retrieve` | Retrieve details of a specific patient |
+| | **PUT** | `/api/patients/<id>/` | `update` | Fully update a specific patient |
+| | **PATCH** | `/api/patients/<id>/` | `partial_update` | Partially update a patient |
+| | **DELETE** | `/api/patients/<id>/` | `destroy` | Delete a patient profile and link |
+| **Doctors** | **GET** | `/api/doctors/` | `list` | Retrieve list of all doctor profiles |
+| | **POST** | `/api/doctors/` | `create` | Create a new doctor and user account |
+| | **GET** | `/api/doctors/<id>/` | `retrieve` | Retrieve details of a specific doctor |
+| | **PUT/PATCH**| `/api/doctors/<id>/` | `update` | Update a specific doctor profile |
+| | **DELETE** | `/api/doctors/<id>/` | `destroy` | Delete a doctor profile |
+| **Nurses** | **GET** | `/api/nurses/` | `list` | Retrieve list of all nurse profiles |
+| | **POST** | `/api/nurses/` | `create` | Create a new nurse and user account |
+| | **GET/PUT/PATCH/DELETE** | `/api/nurses/<id>/` | CRUD | Retrieve, update, or delete a nurse |
+| **Appointments** | **GET** | `/api/appointments/` | `list` | Retrieve list of all appointments |
+| | **POST** | `/api/appointments/` | `create` | Create a new appointment |
+| | **GET/PUT/PATCH/DELETE** | `/api/appointments/<id>/` | CRUD | Retrieve, update, or delete an appointment |
+
+*(Note: In local development, the full URL will be prefixed with your server's host, e.g., `http://127.0.0.1:8000/api/patients/`)*
+
+---
+
+### Q18: Why is there `/api` in front of the endpoints?
+The `/api` prefix is defined in the main URL configuration file: **[Backend/config/urls.py](file:///Users/alvin/Documents/HospitalApp/Backend/config/urls.py)**. 
+
+We included the API app's URLs under this prefix:
+```python
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('api.urls')), # <--- Here!
+]
+```
+
+#### Why we do this (Best Practice):
+1. **API Namespacing**: It separates your data endpoints (which return raw JSON) from other URLs on your server, such as the Django Admin panel (`/admin/`) or if Django was serving front-end static files/templates at the root (`/`).
+2. **Security & Proxy Rules**: In production, it makes it easy for server proxies (like Nginx) or firewalls to identify API traffic (e.g., routing any URL starting with `/api/` to the backend app, while serving static frontend files from storage directly).
+
+
