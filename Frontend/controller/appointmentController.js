@@ -56,11 +56,21 @@ angular.module("hospitalApp").controller("AppointmentController", ["$scope", "ht
 
             // Combine Date and Time
             const dateObj = new Date($scope.appointment.appointmentDate);
-            const timeParts = $scope.appointment.appointmentTime.split(":");
             
-            // Set local hours and minutes from the time input
-            dateObj.setHours(parseInt(timeParts[0], 10));
-            dateObj.setMinutes(parseInt(timeParts[1], 10));
+            let hours = 0;
+            let minutes = 0;
+            
+            if ($scope.appointment.appointmentTime instanceof Date) {
+                hours = $scope.appointment.appointmentTime.getHours();
+                minutes = $scope.appointment.appointmentTime.getMinutes();
+            } else if (typeof $scope.appointment.appointmentTime === "string") {
+                const timeParts = $scope.appointment.appointmentTime.split(":");
+                hours = parseInt(timeParts[0], 10) || 0;
+                minutes = parseInt(timeParts[1], 10) || 0;
+            }
+            
+            dateObj.setHours(hours);
+            dateObj.setMinutes(minutes);
             dateObj.setSeconds(0);
 
             // Construct payload matching AppointmentSerializer

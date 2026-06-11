@@ -1,0 +1,19 @@
+<div class="app-item">
+    <div class="app-meta">
+        <span class="app-doctor">{{ $ctrl.appointment.doctorName }}</span>
+        <span class="status-badge status-{{ $ctrl.appointment.appointment_status }}">
+            {{ $ctrl.appointment.appointment_status }}
+        </span>
+    </div>
+    <div class="app-time">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+        </svg>
+        {{ $ctrl.appointment.appointment_date | date:'dd MMM yyyy - hh:mm a' }}
+    </div>
+    <div class="app-diagnosis" ng-if="$ctrl.appointment.diagnosis">
+        <strong>Diagnosis:</strong> {{ $ctrl.appointment.diagnosis }}
+    </div>
+</div>

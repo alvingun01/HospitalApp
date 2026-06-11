@@ -17,6 +17,12 @@ angular.module("hospitalApp").factory("httpService", ["$http", function ($http) 
         getAppointments() {
             return $http.get(`${BASE_URL}/appointments/`)
         },
+        getAppointmentsByPatientId(patientId) {
+            return $http.get(`${BASE_URL}/appointments/?patient=${patientId}`)
+        },
+        getAppointmentsByDoctorId(doctorId) {
+            return $http.get(`${BASE_URL}/appointments/?doctor=${doctorId}`)
+        },
         postDoctors(data) {
             return $http.post(`${BASE_URL}/doctors/`, data)
         },

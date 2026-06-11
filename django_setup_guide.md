@@ -1168,3 +1168,293 @@ Rather than manually attaching the headers on every single `$http` call across c
    }]);
    ```
 This automatically handles header injection for every outbound endpoint and handles session expiry redirects in one centralized block.
+
+### Q53: How do I implement a side-by-side comparison layout for upcoming and previous appointments in AngularJS without tables?
+To implement a side-by-side responsive grid columns layout:
+
+1. **Backend Mapping & Partitioning (JavaScript Controller)**:
+   In the controller, load the data from your backend. Map the doctor name onto the appointment using a lookup dictionary. Then, separate appointments by comparing the dates to the current system time:
+   ```javascript
+   const now = new Date();
+   
+   // Partition and Sort (upcoming: nearest first, previous: newest first)
+   $scope.upcomingAppointments = patientApps
+       .filter(app => new Date(app.appointment_date) >= now)
+       .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
+
+   $scope.previousAppointments = patientApps
+       .filter(app => new Date(app.appointment_date) < now)
+       .sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date));
+   ```
+
+2. **Mount side-by-side list columns (HTML)**:
+   Create a grid container (`.dashboard-columns`) and define two columns (`.dashboard-col`). Inside each list, iterate over the partition lists directly using `ng-repeat`, mounting the custom `<patient-app-card>` component:
+   ```html
+   <div class="dashboard-columns">
+       <!-- Column 1: Upcoming -->
+       <div class="dashboard-col">
+           <h2 class="col-heading">Upcoming Appointments</h2>
+           <div class="appointments-list">
+               <patient-app-card ng-repeat="app in upcomingAppointments" appointment="app"></patient-app-card>
+               <div class="no-app-placeholder" ng-if="upcomingAppointments.length === 0">
+                   No upcoming appointments scheduled.
+               </div>
+           </div>
+       </div>
+
+       <!-- Column 2: Previous -->
+       <div class="dashboard-col">
+           <h2 class="col-heading">Previous Appointments</h2>
+           <div class="appointments-list">
+               <patient-app-card ng-repeat="app in previousAppointments" appointment="app"></patient-app-card>
+               <div class="no-app-placeholder" ng-if="previousAppointments.length === 0">
+                   No previous appointment history.
+               </div>
+           </div>
+       </div>
+   </div>
+   ```
+
+3. **Styling Responsive Columns (CSS)**:
+   Define the grid behavior to display side-by-side on larger viewports and stack vertically on screens narrower than `768px`:
+   ```css
+   .dashboard-columns {
+       display: grid;
+       grid-template-columns: 1fr 1fr;
+       gap: 24px;
+       margin-top: 24px;
+       width: 100%;
+   }
+
+   @media (max-width: 768px) {
+       .dashboard-columns {
+           grid-template-columns: 1fr;
+           gap: 20px;
+       }
+   }
+   ```
+
+---
+
+### Q54: Why does calling `.split()` on the model bound to `<input type="time">` throw a TypeError in AngularJS?
+In AngularJS (versions 1.3+), inputs of type `date`, `time`, and `datetime-local` do **not** bind to plain ISO string values in the model. Instead, AngularJS parses their values and binds them to native JavaScript **`Date` objects** (with `date` representing the chosen calendar day, and `time` representing a `Date` instance with date components set to Jan 1, 1970).
+
+Because native `Date` objects do not possess the String helper `.split()` function, calling it directly throws a `TypeError: ...split is not a function`.
+
+#### The Solution (Polymorphic Date/Time Merger):
+To merge distinct `<input type="date">` and `<input type="time">` models safely without type crashes, build a check that accommodates both native `Date` instances and raw strings:
+```javascript
+// 1. Instantiate date object
+const dateObj = new Date($scope.appointment.appointmentDate);
+
+let hours = 0;
+let minutes = 0;
+
+// 2. Extract hours/minutes safely depending on the bound type
+if ($scope.appointment.appointmentTime instanceof Date) {
+    hours = $scope.appointment.appointmentTime.getHours();
+    minutes = $scope.appointment.appointmentTime.getMinutes();
+} else if (typeof $scope.appointment.appointmentTime === "string") {
+    const timeParts = $scope.appointment.appointmentTime.split(":");
+    hours = parseInt(timeParts[0], 10) || 0;
+    minutes = parseInt(timeParts[1], 10) || 0;
+}
+
+// 3. Update the date object time fields
+dateObj.setHours(hours);
+dateObj.setMinutes(minutes);
+dateObj.setSeconds(0);
+```
+This is fully cross-browser compatible and prevents model type changes from crashing execution threads.
+
+---
+
+### Q55: How are custom AngularJS components configured and integrated into layout views?
+To design, implement, and mount custom components (such as a card component) in an AngularJS SPA:
+
+1. **Declare the Component (JavaScript Component File)**:
+   Use `angular.module("yourModule").component("componentName", { ... })`. Specify bindings using symbols like `<` (one-way data binding) and link the relative HTML template:
+   ```javascript
+   // Frontend/components/PatientAppCard.js
+   angular.module("hospitalApp").component("patientAppCard", {
+       bindings: {
+           appointment: "<" // One-way data binding
+       },
+       templateUrl: "components/PatientAppCard.html", // Relative path from web server root
+       controller: function () {
+           // Component logic goes here
+       }
+   });
+   ```
+
+2. **Component template syntax (`$ctrl`)**:
+   By default, AngularJS components compile templates using the `controllerAs` pattern set to `$ctrl`. Inside the HTML template, bound properties are accessed via `$ctrl`:
+   ```html
+   <!-- Frontend/components/PatientAppCard.html -->
+   <div class="app-item">
+       <span class="app-doctor">{{ $ctrl.appointment.doctorName }}</span>
+       <span class="status-badge status-{{ $ctrl.appointment.appointment_status }}">
+           {{ $ctrl.appointment.appointment_status }}
+       </span>
+   </div>
+   ```
+
+3. **Import in main index**:
+   Include the script tag inside [index.html](file:///Users/alvin/Documents/HospitalApp/Frontend/index.html) after the module definition script (`app.js`):
+   ```html
+   <script src="components/PatientAppCard.js"></script>
+   ```
+
+4. **Mount using kebab-case markup**:
+   AngularJS translates camelCase component names (`patientAppCard`) into kebab-case tags (`<patient-app-card>`) in HTML layouts:
+   ```html
+   <patient-app-card ng-repeat="app in upcomingAppointments" appointment="app"></patient-app-card>
+   ```
+
+---
+
+### Q56: Why is the `appointmentPairs` array no longer needed in the controller and views?
+The `appointmentPairs` array was originally introduced to support a side-by-side table layout where upcoming and previous appointments were matched by their array indices and rendered row-by-row in a table. 
+
+With the shift to a modern CSS grid layout (`.dashboard-columns`), the upcoming and previous lists of appointments are rendered as separate columns:
+1. **Direct Array Iteration**: In [home.html](file:///Users/alvin/Documents/HospitalApp/Frontend/views/home.html), the columns use `ng-repeat` to iterate directly and independently over `$scope.upcomingAppointments` and `$scope.previousAppointments`.
+2. **Simplified Controller Logic**: In [homeController.js](file:///Users/alvin/Documents/HospitalApp/Frontend/controller/homeController.js), we no longer need to zip the two lists together into a helper array.
+3. **No Obsolete References**: Since the table layout is removed, `appointmentPairs` has been completely deleted from the codebase, avoiding unnecessary data restructuring and improving template readability.
+
+---
+
+### Q57: How to make an API endpoint to retrieve appointments based on patient ID?
+There are three standard patterns to implement filtering by patient ID within Django REST Framework (DRF):
+
+#### Approach 1: Query Parameter Filter on the ViewSet (Recommended & Most Flexible)
+Modify the `get_queryset` method of the existing `AppointmentViewSet` in [views.py](file:///Users/alvin/Documents/HospitalApp/Backend/api/views.py) to look for a `patient` parameter in the request query string.
+
+```python
+# Backend/api/views.py
+class AppointmentViewSet(viewsets.ModelViewSet):
+    serializer_class = AppointmentSerializer
+
+    def get_queryset(self):
+        queryset = Appointment.objects.all()
+        patient_id = self.request.query_params.get('patient')
+        if patient_id is not None:
+            queryset = queryset.filter(patient_id=patient_id)
+        return queryset
+```
+
+* **Client Request**: `GET http://localhost:8000/api/appointments/?patient=3`
+* **Pros**: Simple, highly standard, does not require changes to `urls.py`, and allows combining with other filters (e.g., filtering by doctor or date).
+
+#### Approach 2: Custom ViewSet `@action` Route
+Add a custom detail or list route to `AppointmentViewSet` using the `@action` decorator.
+
+```python
+# Backend/api/views.py
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
+class AppointmentViewSet(viewsets.ModelViewSet):
+    queryset = Appointment.objects.all()
+    serializer_class = AppointmentSerializer
+
+    @action(detail=False, methods=['get'], url_path='patient/(?P<patient_id>[^/.]+)')
+    def by_patient(self, request, patient_id=None):
+        appointments = Appointment.objects.filter(patient_id=patient_id)
+        serializer = self.get_serializer(appointments, many=True)
+        return Response(serializer.data)
+```
+
+* **Client Request**: `GET http://localhost:8000/api/appointments/patient/3/`
+* **Pros**: Provides a explicit URL endpoint dedicated to this operation without relying on URL query strings.
+
+#### Approach 3: Nested API Endpoint View
+Create a dedicated read-only sub-resource endpoint (e.g., `api/patients/<patient_id>/appointments/`) by defining a custom `APIView` or secondary ViewSet, and register it in `urls.py`.
+
+```python
+# Backend/api/views.py
+from rest_framework.views import APIView
+from rest_framework import status
+
+class PatientAppointmentsListView(APIView):
+    def get(self, request, patient_id):
+        appointments = Appointment.objects.filter(patient_id=patient_id)
+        serializer = AppointmentSerializer(appointments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+```
+
+```python
+# Backend/api/urls.py
+path('patients/<int:patient_id>/appointments/', PatientAppointmentsListView.as_view(), name='patient-appointments-list')
+```
+
+* **Client Request**: `GET http://localhost:8000/api/patients/3/appointments/`
+* **Pros**: Best fit if design specifications call for strict nested sub-resource routing.
+
+---
+
+### Q58: Is overriding `get_queryset` with commented-out class-level `queryset` correct in Django REST Framework?
+Yes, the implementation is correct and functional because:
+1. **Dynamic Queryset Generation**: Implementing `get_queryset(self)` overrides any class-level `queryset` property. When DRF handles incoming requests, it calls `get_queryset()` to retrieve the list of objects dynamically.
+2. **Explicit ForeignKey Filtering**: Using `.filter(patient_id=patient_id)` and `.filter(doctor_id=doctor_id)` matches the default database column names generated by Django's `ForeignKey` relationships, which performs the query efficiently without loading the related objects first.
+
+#### Best Practice Recommendation
+While commenting out `# queryset = Appointment.objects.all()` works, it is recommended to keep `queryset = Appointment.objects.all()` uncommented:
+- **Router Basename Detection**: When registering the ViewSet in `urls.py` (e.g. `router.register('appointments', AppointmentViewSet)`), DRF uses the `queryset` attribute to automatically infer the router basename. If `queryset` is omitted/commented out and no `basename` is provided in the router registration, Django will raise an error on startup.
+- **Auto-generated Documentation**: Schema generators (like Swagger/OpenAPI) and the DRF browsable API use the default class-level `queryset` to determine the model metadata, field lists, and filters.
+
+---
+
+### Q59: Should we build separate login pages for staff (doctors/nurses) and patients, or a single unified login page?
+For most healthcare and portal applications, a **Single Unified Login Page** is recommended, backed by **role-based routing** on the frontend. 
+
+Here is a comparison of the design patterns:
+
+#### Option 1: Single Unified Login Page (Recommended)
+All users navigate to `/login` to sign in. Once authenticated, the client checks the role in the user profile payload (which is already returned by the backend `LoginView` API) and redirects accordingly.
+* **Redirection Flow**:
+  - `role === 'patient'` $\rightarrow$ redirect to `/home` (Patient Portal)
+  - `role === 'doctor'` $\rightarrow$ redirect to `/doctor-dashboard`
+  - `role === 'nurse'` $\rightarrow$ redirect to `/nurse-dashboard`
+* **Pros**:
+  - Single URL to remember.
+  - Less code duplication; reuse views, input validators, stylesheets, and interceptors.
+  - Simplified security patch coverage and centralized sessions.
+* **Cons**:
+  - Requires branding to be generic (e.g. "Hospital Portal Login" instead of "Patient Portal Login").
+
+#### Option 2: Separate Login Pages (e.g. `/login` vs `/staff/login`)
+Patients log in at `/login`, while doctors, nurses, and admins log in at `/staff/login`.
+* **Pros**:
+  - **Security Partitioning**: Allows restricting staff logins to a hospital intranet IP range, active VPN, or requiring strict Multi-Factor Authentication (MFA/SSO like Okta/Active Directory) that is not enforced for patients.
+  - **Custom Content**: The patient page can feature registration links, support widgets, and appointment scheduling help, while the staff page is kept strictly functional.
+* **Cons**:
+  - High code duplication across views and controllers.
+  - Staff must remember a separate web path.
+
+#### Recommendation
+**Start with a Single Unified Login Page.** It is faster to maintain, cleaner, and matches the existing codebase architecture since the backend `LoginView` already includes the user's role in its JSON response. Only split them if you have distinct security/SSO requirements for employees vs public clients.
+
+---
+
+### Q60: How do we handle a doctor or nurse who is also a patient at the hospital?
+There are two common architectural patterns to handle multi-role users (e.g., a doctor who needs to book appointments as a patient):
+
+#### Pattern 1: Separate Accounts (Industry Best Practice / Highly Recommended)
+Require the doctor to maintain two distinct user records in the system:
+1. **Professional Account**: e.g., `dr.jane@hospital.com` (Role: `doctor`), linked to `DoctorProfile`. Used for managing clinical shifts, diagnoses, and patient appointments.
+2. **Personal Account**: e.g., `jane.personal@gmail.com` (Role: `patient`), linked to `PatientProfile`. Used for personal healthcare tracking and bookings.
+
+* **Why this is the industry standard**:
+  - **Compliance & Auditing (e.g. HIPAA)**: Medical applications require strict separation between employee clinical capabilities and personal health history. Doctors should not be viewing their own charts or booking appointments using clinical/admin credentials to prevent auditing errors.
+  - **Security isolation**: If their public patient password is compromised, their clinical credentials remain safe.
+  - **Simplified Database Logic**: Keeps all querysets clean (e.g., a Patient ID maps to a unique single human patient profile, and clinical records are completely separate).
+
+#### Pattern 2: Single Account with Profile Switching
+Allow a single user account to have multiple active profile models associated with it:
+1. **Data Model Relationship**:
+   - In [models.py](file:///Users/alvin/Documents/HospitalApp/Backend/api/models.py), because `DoctorProfile` and `PatientProfile` are `OneToOneField` relations to `CustomUser`, a single user instance can technically possess both relations simultaneously.
+2. **UI Implementation**:
+   - When a multi-role user logs in, the backend sends a list of roles (e.g., `roles: ["doctor", "patient"]`).
+   - The UI includes a role switcher (e.g., in the navbar) that toggles the client-side state between "Doctor View" and "Patient View".
+3. **Pros**: The user only needs a single login email and password.
+4. **Cons**: Significantly complicates backend authorization logic, as checking `request.user` permissions requires dynamically verifying the active context role of the request.
