@@ -1,6 +1,28 @@
 app = angular.module("hospitalApp", ["ngRoute"])
 
-app.config(function ($routeProvider) {
+app.factory("authInterceptor", ["$q", "$location", function ($q, $location) {
+    return {
+        request: function (config) {
+            const token = localStorage.getItem("token");
+            if (token) {
+                config.headers['Authorization'] = 'Token ' + token;
+            }
+            return config;
+        },
+        responseError: function (rejection) {
+            if (rejection.status === 401) {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                $location.path("/login");
+            }
+            return $q.reject(rejection);
+        }
+    };
+}]);
+
+app.config(["$routeProvider", "$httpProvider", function ($routeProvider, $httpProvider) {
+    $httpProvider.interceptors.push("authInterceptor");
+
     $routeProvider
         .when("/", {
             templateUrl: "views/home.html",
@@ -20,13 +42,14 @@ app.config(function ($routeProvider) {
         .when("/patients", {
             templateUrl: "views/patients.html"
         })
-        .when("/appointments", {
-            templateUrl: "views/appointments.html"
+        .when("/appointment", {
+            templateUrl: "views/appointment.html",
+            controller: "AppointmentController"
         })
         .otherwise({
             redirectTo: "/"
         })
-})
+}])
 
 app.run(["$rootScope", "$location", function ($rootScope, $location) {
     $rootScope.$on("$routeChangeStart", function (event, next, current) {

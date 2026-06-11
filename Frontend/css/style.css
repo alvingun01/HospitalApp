@@ -152,6 +152,11 @@ body {
     background-color: rgba(15, 23, 42, 0.85);
 }
 
+select.form-input option {
+    background-color: #0f172a;
+    color: var(--text-primary);
+}
+
 .form-input::placeholder {
     color: #64748b;
     /* Highly readable input placeholder color */
@@ -270,6 +275,21 @@ body {
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
 }
 
+.alert-success {
+    background-color: rgba(52, 211, 153, 0.15);
+    border: 1px solid rgba(52, 211, 153, 0.3);
+    color: var(--success);
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    box-shadow: 0 4px 12px rgba(52, 211, 153, 0.1);
+}
+
 /* Animations */
 @keyframes fadeIn {
     from {
@@ -339,6 +359,19 @@ input:-webkit-autofill:active {
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
+.btn-primary.btn-sm {
+    width: auto;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+}
+
 /* Dashboard & Page Layouts */
 .home-container {
     width: 100%;
@@ -354,4 +387,10 @@ input:-webkit-autofill:active {
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 16px;
     margin-bottom: 32px;
+}
+
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }

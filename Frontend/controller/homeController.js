@@ -9,4 +9,7 @@ angular.module("hospitalApp").controller("HomeController", ["$scope", "httpServi
         localStorage.removeItem("user");
         $location.path("/login");
     }
+    $scope.makeAppointment = function () {
+        $location.path("/appointment");
+    }
 }])

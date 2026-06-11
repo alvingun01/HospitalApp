@@ -1094,3 +1094,77 @@ To implement a clean, integrated password toggle that displays inside the passwo
 4. **Toggle SVG Icons**:
    We place two SVGs inside the button, showing and hiding them using `ng-if="!showPassword"` (eye icon) and `ng-if="showPassword"` (slashed eye icon) to visually indicate the state.
 
+---
+
+### Q51: How do I group and size action buttons (like Make Appointment and Logout) inside a header navigation bar?
+To group action buttons side-by-side on the right of the header while keeping them sized properly:
+
+1. **Flex Action Group (`.nav-actions`)**:
+   We wrap the buttons in a dedicated container styled with flexbox and a uniform gap to align them:
+   ```css
+   .nav-actions {
+       display: flex;
+       align-items: center;
+       gap: 12px;
+   }
+   ```
+
+2. **Inline Button Sizing Modifier (`.btn-sm`)**:
+   Instead of using standard block-level buttons (`width: 100%`), we apply a modifier class `.btn-sm` on the primary button:
+   ```css
+   .btn-primary.btn-sm {
+       width: auto;
+       padding: 10px 20px;
+       font-size: 14px;
+       font-weight: 500;
+       margin-top: 0;
+       display: inline-flex;
+       align-items: center;
+       justify-content: center;
+       gap: 8px;
+       box-shadow: 0 4px 12px rgba(14, 165, 233, 0.2);
+   }
+   ```
+   This overrides default block layout properties, making it compact and aligned with other secondary or danger buttons.
+
+---
+
+### Q52: Why am I getting 401 Unauthorized errors on API calls even after logging in, and how do I attach the token globally?
+A `401 Unauthorized` response occurs when the Django backend expects an authorization header (e.g. `Authorization: Token <key>`) but the frontend client fails to include it in the request.
+
+#### The Solution (AngularJS HTTP Interceptor):
+Rather than manually attaching the headers on every single `$http` call across controllers, the best practice is to configure a global **HTTP Interceptor** inside [app.js](file:///Users/alvin/Documents/HospitalApp/Frontend/app.js):
+
+1. **Define the Interceptor Factory**:
+   ```javascript
+   app.factory("authInterceptor", ["$q", "$location", function ($q, $location) {
+       return {
+           // Intercepts outgoing requests to append the authorization header
+           request: function (config) {
+               const token = localStorage.getItem("token");
+               if (token) {
+                   config.headers['Authorization'] = 'Token ' + token;
+               }
+               return config;
+           },
+           // Intercepts response errors (e.g., if a token expires/is deleted)
+           responseError: function (rejection) {
+               if (rejection.status === 401) {
+                   localStorage.removeItem("token");
+                   localStorage.removeItem("user");
+                   $location.path("/login");
+               }
+               return $q.reject(rejection);
+           }
+       };
+   }]);
+   ```
+
+2. **Register Interceptor with `$httpProvider`**:
+   ```javascript
+   app.config(["$routeProvider", "$httpProvider", function ($routeProvider, $httpProvider) {
+       $httpProvider.interceptors.push("authInterceptor");
+       // route setups...
+   }]);
+   ```
+This automatically handles header injection for every outbound endpoint and handles session expiry redirects in one centralized block.
