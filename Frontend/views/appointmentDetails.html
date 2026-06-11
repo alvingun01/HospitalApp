@@ -111,7 +111,7 @@
             <form ng-submit="addDiagnosis()" style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
                 <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
                     <label class="info-label" style="font-weight: 600;">Diagnosis Notes</label>
-                    <textarea ng-model="$parent.diagnosisInput" class="form-input" rows="5"
+                    <textarea ng-model="formData.diagnosisInput" class="form-input"
                         placeholder="Enter clinical observations, prescription, and notes..."
                         style="width: 100%; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); resize: vertical;"
                         required>

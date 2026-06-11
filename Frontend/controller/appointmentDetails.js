@@ -1,7 +1,9 @@
 angular.module("hospitalApp").controller("appointmentDetailsController", ["$scope", "httpService", "$location", "$routeParams", function ($scope, httpService, $location, $routeParams) {
     $scope.appointmentId = $routeParams.appointmentId;
     $scope.appointment = null;
-    $scope.diagnosisInput = "";
+    $scope.formData = {
+        diagnosisInput: ""
+    };
     $scope.loading = true;
     $scope.error = "";
     $scope.currentUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -16,6 +18,7 @@ angular.module("hospitalApp").controller("appointmentDetailsController", ["$scop
     // 1. Fetch detailed appointment data
     httpService.getAppointment($scope.appointmentId).then(function (response) {
         $scope.appointment = response.data;
+        $scope.formData.diagnosisInput = response.data.diagnosis || "";
 
         // 2. Fetch patient details
         httpService.getPatient(response.data.patient).then(function (patientResponse) {
@@ -121,12 +124,12 @@ angular.module("hospitalApp").controller("appointmentDetailsController", ["$scop
     };
 
     $scope.addDiagnosis = function () {
-        if (!$scope.diagnosisInput) {
+        if (!$scope.formData.diagnosisInput) {
             $scope.error = "Please enter a diagnosis.";
             return;
         }
 
-        $scope.appointment.diagnosis = $scope.diagnosisInput;
+        $scope.appointment.diagnosis = $scope.formData.diagnosisInput;
         const payload = {
             patient: $scope.appointment.patient,
             doctor: $scope.appointment.doctor,
@@ -140,7 +143,7 @@ angular.module("hospitalApp").controller("appointmentDetailsController", ["$scop
         httpService.putAppointments($scope.appointmentId, payload).then(function (response) {
             $scope.appointment.diagnosis = response.data.diagnosis;
             $scope.error = "Diagnosis added successfully.";
-            $scope.diagnosisInput = ""; // Clear input notes field
+            $scope.formData.diagnosisInput = ""; // Clear input notes field
         }).catch(function (err) {
             $scope.error = "Failed to add diagnosis: " + (err.data && err.data.detail || "Error");
         });
