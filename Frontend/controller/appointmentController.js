@@ -56,10 +56,10 @@ angular.module("hospitalApp").controller("AppointmentController", ["$scope", "ht
 
             // Combine Date and Time
             const dateObj = new Date($scope.appointment.appointmentDate);
-            
+
             let hours = 0;
             let minutes = 0;
-            
+
             if ($scope.appointment.appointmentTime instanceof Date) {
                 hours = $scope.appointment.appointmentTime.getHours();
                 minutes = $scope.appointment.appointmentTime.getMinutes();
@@ -68,7 +68,7 @@ angular.module("hospitalApp").controller("AppointmentController", ["$scope", "ht
                 hours = parseInt(timeParts[0], 10) || 0;
                 minutes = parseInt(timeParts[1], 10) || 0;
             }
-            
+
             dateObj.setHours(hours);
             dateObj.setMinutes(minutes);
             dateObj.setSeconds(0);
@@ -89,6 +89,7 @@ angular.module("hospitalApp").controller("AppointmentController", ["$scope", "ht
                     appointmentDate: "",
                     appointmentTime: ""
                 };
+                $location.path("/");
             }
         }).catch(function (error) {
             console.error("Error booking appointment:", error);

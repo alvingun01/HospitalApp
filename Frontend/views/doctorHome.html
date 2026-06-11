@@ -16,12 +16,24 @@
 
     <!-- Dashboard Column Layout -->
     <div class="dashboard-columns">
-        <div class="dashboard-col" style="flex: 1; max-width: 800px; margin: 0 auto;">
+        <!-- Upcoming Appointments Column -->
+        <div class="dashboard-col">
             <h2 class="col-heading">Your Upcoming Appointments</h2>
             <div class="appointments-list">
-                <doctor-app-card ng-repeat="app in appointments" appointment="app"></doctor-app-card>
-                <div class="no-app-placeholder" ng-if="appointments.length === 0">
+                <doctor-app-card ng-repeat="app in upcomingAppointments" appointment="app"></doctor-app-card>
+                <div class="no-app-placeholder" ng-if="upcomingAppointments.length === 0">
                     No upcoming patient appointments scheduled.
+                </div>
+            </div>
+        </div>
+
+        <!-- Completed Appointments Column -->
+        <div class="dashboard-col">
+            <h2 class="col-heading">Your Completed Appointments</h2>
+            <div class="appointments-list">
+                <doctor-app-card ng-repeat="app in completedAppointments" appointment="app"></doctor-app-card>
+                <div class="no-app-placeholder" ng-if="completedAppointments.length === 0">
+                    No completed patient appointments.
                 </div>
             </div>
         </div>

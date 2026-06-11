@@ -1,6 +1,9 @@
 angular.module("hospitalApp").controller("HomeController", ["$scope", "httpService", "$location", function ($scope, httpService, $location) {
     $scope.token = localStorage.getItem("token");
     $scope.currentUser = JSON.parse(localStorage.getItem("user") || "{}");
+    if ($scope.currentUser.role !== 'patient') {
+        $location.path('/doctorHome');
+    }
 
     if (!$scope.token) {
         $location.path("/login");
@@ -8,7 +11,7 @@ angular.module("hospitalApp").controller("HomeController", ["$scope", "httpServi
     }
 
     $scope.upcomingAppointments = [];
-    $scope.previousAppointments = [];
+    $scope.completedAppointments = [];
     $scope.doctorsMap = {};
 
     $scope.logout = function () {
@@ -45,14 +48,14 @@ angular.module("hospitalApp").controller("HomeController", ["$scope", "httpServi
                 patientApps.forEach(app => {
                     app.doctorName = $scope.doctorsMap[app.doctor] || "Unknown Doctor";
                 });
-
-                // Partition appointments into upcoming and previous
+                console.log(patientApps);
+                // Partition appointments into upcoming and completed
                 $scope.upcomingAppointments = patientApps
-                    .filter(app => new Date(app.appointment_date) >= now)
+                    .filter(app => new Date(app.appointment_date) >= now && app.appointment_status !== 'Completed' && app.appointment_status !== 'Cancelled')
                     .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
 
-                $scope.previousAppointments = patientApps
-                    .filter(app => new Date(app.appointment_date) < now)
+                $scope.completedAppointments = patientApps
+                    .filter(app => new Date(app.appointment_date) < now || app.appointment_status === 'Completed' || app.appointment_status === 'Cancelled')
                     .sort((a, b) => new Date(b.appointment_date) - new Date(a.appointment_date));
 
             });

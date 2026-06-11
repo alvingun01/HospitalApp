@@ -41,8 +41,8 @@
         <div class="dashboard-col">
             <h2 class="col-heading">Previous Appointments</h2>
             <div class="appointments-list">
-                <patient-app-card ng-repeat="app in previousAppointments" appointment="app"></patient-app-card>
-                <div class="no-app-placeholder" ng-if="previousAppointments.length === 0">
+                <patient-app-card ng-repeat="app in completedAppointments" appointment="app"></patient-app-card>
+                <div class="no-app-placeholder" ng-if="completedAppointments.length === 0">
                     No previous appointment history.
                 </div>
             </div>

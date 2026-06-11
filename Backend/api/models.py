@@ -82,7 +82,7 @@ class Appointment(models.Model):
     doctor = models.ForeignKey(DoctorProfile, on_delete=models.CASCADE, related_name='appointments')
     
     appointment_date = models.DateTimeField()
-    appointment_status = models.CharField(max_length=50, default='pending')
+    appointment_status = models.CharField(max_length=50, default='Pending')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     diagnosis = models.TextField(blank=True)

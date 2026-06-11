@@ -1918,3 +1918,41 @@ In `get_queryset(self)`, retrieve each query parameter individually and chain th
 
         return queryset
 ```
+
+---
+
+### Q75: How do we implement role-based route access controls (route guards) in AngularJS?
+To restrict access to routes like `/doctorHome` (so patients cannot access them) and `/` (so doctors are redirected to the staff view), configure the routing middleware inside the `app.run` block:
+
+1. **Configure `$routeChangeStart`**:
+   Listen to the `$routeChangeStart` event which triggers before any client-side route transition resolves.
+2. **Implement Role Validation**:
+   Inspect the `next` route template path and cross-reference it with the user's role metadata stored in `localStorage`:
+
+```javascript
+app.run(["$rootScope", "$location", function ($rootScope, $location) {
+    $rootScope.$on("$routeChangeStart", function (event, next, current) {
+        const token = localStorage.getItem("token");
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const isPublicRoute = next && (next.templateUrl === "views/login.html" || next.templateUrl === "views/register.html");
+
+        // 1. Unauthenticated redirect
+        if (!token && !isPublicRoute) {
+            $location.path("/login");
+            return;
+        }
+
+        // 2. Role-Based access checks
+        if (token && next) {
+            // Patient attempting to access Doctor Dashboard
+            if (next.templateUrl === "views/doctorHome.html" && user.role !== "doctor") {
+                $location.path("/"); // Redirect to patient home dashboard
+            }
+            // Doctor attempting to access Patient Dashboard
+            if (next.templateUrl === "views/home.html" && user.role === "doctor") {
+                $location.path("/doctorHome"); // Redirect to doctor dashboard
+            }
+        }
+    });
+}]);
+```

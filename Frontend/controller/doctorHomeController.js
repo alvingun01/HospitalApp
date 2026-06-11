@@ -1,7 +1,12 @@
 angular.module("hospitalApp").controller("doctorHomeController", ["$scope", "httpService", "$location", function ($scope, httpService, $location) {
     $scope.appointments = [];
     $scope.currentDoctor = JSON.parse(localStorage.getItem('user') || '{}');
+    if ($scope.currentDoctor.role !== 'doctor') {
+        $location.path('/');
+    }
     $scope.patientsMap = {};
+    $scope.completedAppointments = [];
+    $scope.upcomingAppointments = [];
 
     $scope.logout = function () {
         localStorage.removeItem("token");
@@ -44,8 +49,13 @@ angular.module("hospitalApp").controller("doctorHomeController", ["$scope", "htt
         });
 
         // Filter for upcoming appointments and sort chronologically
-        $scope.appointments = doctorApps
-            .filter(app => new Date(app.appointment_date) >= now)
+        console.log(doctorApps);
+        $scope.upcomingAppointments = doctorApps
+            .filter(app => new Date(app.appointment_date) >= now && app.appointment_status !== 'Completed' && app.appointment_status !== 'Cancelled')
+            .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
+
+        $scope.completedAppointments = doctorApps
+            .filter(app => new Date(app.appointment_date) < now || app.appointment_status === 'Completed' || app.appointment_status === 'Cancelled')
             .sort((a, b) => new Date(a.appointment_date) - new Date(b.appointment_date));
     }).catch(function (error) {
         console.error("Error loading doctor dashboard:", error);
