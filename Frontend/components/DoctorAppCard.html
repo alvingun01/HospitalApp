@@ -1,10 +1,11 @@
 <div class="app-item">
     <div class="app-meta">
-        <span class="app-doctor">{{ $ctrl.appointment.doctorName }}</span>
+        <span class="app-doctor">{{ $ctrl.appointment.patientDetails.name }}</span>
         <span class="status-badge status-{{ $ctrl.appointment.appointment_status }}">
             {{ $ctrl.appointment.appointment_status }}
         </span>
     </div>
+    
     <div class="app-time">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round">
@@ -13,6 +14,23 @@
         </svg>
         {{ $ctrl.appointment.appointment_date | date:'dd MMM yyyy - hh:mm a' }}
     </div>
+
+    <!-- Brief Patient Information -->
+    <div class="patient-brief-info">
+        <div class="info-row" ng-if="$ctrl.appointment.patientDetails.phone && $ctrl.appointment.patientDetails.phone !== 'N/A'">
+            <span class="info-label">Phone:</span>
+            <span class="info-val">{{ $ctrl.appointment.patientDetails.phone }}</span>
+        </div>
+        <div class="info-row" ng-if="$ctrl.appointment.patientDetails.email && $ctrl.appointment.patientDetails.email !== 'N/A'">
+            <span class="info-label">Email:</span>
+            <span class="info-val">{{ $ctrl.appointment.patientDetails.email }}</span>
+        </div>
+        <div class="info-row" ng-if="$ctrl.appointment.patientDetails.location && $ctrl.appointment.patientDetails.location !== 'N/A'">
+            <span class="info-label">Location:</span>
+            <span class="info-val">{{ $ctrl.appointment.patientDetails.location }}</span>
+        </div>
+    </div>
+
     <div class="app-diagnosis" ng-if="$ctrl.appointment.diagnosis">
         <strong>Diagnosis:</strong> {{ $ctrl.appointment.diagnosis }}
     </div>

@@ -26,8 +26,15 @@ class DoctorViewSet(viewsets.ModelViewSet):
     """
     API view to handle CRUD operations for Doctor Profiles.
     """
-    queryset = DoctorProfile.objects.all()
     serializer_class = DoctorProfileSerializer
+    def get_queryset(self):
+        user = self.request.user
+        queryset = DoctorProfile.objects.all()
+        if not user.is_authenticated:
+            return DoctorProfile.objects.none()
+        if user.role == 'doctor':
+            queryset = queryset.filter(user=user)
+        return queryset
 
 class NurseViewSet(viewsets.ModelViewSet):
     """
@@ -43,13 +50,20 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     # queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
     def get_queryset(self):
+        user = self.request.user
         queryset = Appointment.objects.all()
-        patient_id = self.request.query_params.get('patient')
-        doctor_id = self.request.query_params.get('doctor')
-        if patient_id is not None:
-            queryset = queryset.filter(patient_id=patient_id)
-        if doctor_id is not None:
-            queryset = queryset.filter(doctor_id=doctor_id)
+        if not user.is_authenticated:
+            return Appointment.objects.none()
+        if user.role == 'patient':
+            appointmentId = self.request.query_params.get('appointmentId')
+            queryset = queryset.filter(patient__user=user)
+            if appointmentId is not None:
+                queryset = queryset.filter(id=appointmentId)
+        elif user.role == 'doctor':
+            appointmentId = self.request.query_params.get('appointmentId')
+            queryset = queryset.filter(doctor__user=user)
+            if appointmentId is not None:
+                queryset = queryset.filter(id=appointmentId)
         return queryset
 
 

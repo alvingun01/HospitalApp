@@ -1,0 +1,29 @@
+<div class="home-container">
+    <div class="header-nav">
+        <h1>Doctor Dashboard</h1>
+        <div class="nav-actions">
+            <button ng-click="logout()" class="btn-danger">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- Dashboard Column Layout -->
+    <div class="dashboard-columns">
+        <div class="dashboard-col" style="flex: 1; max-width: 800px; margin: 0 auto;">
+            <h2 class="col-heading">Your Upcoming Appointments</h2>
+            <div class="appointments-list">
+                <doctor-app-card ng-repeat="app in appointments" appointment="app"></doctor-app-card>
+                <div class="no-app-placeholder" ng-if="appointments.length === 0">
+                    No upcoming patient appointments scheduled.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

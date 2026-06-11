@@ -539,3 +539,33 @@ input:-webkit-autofill:active {
     color: var(--error);
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
+
+/* Patient Brief Information on Cards */
+.patient-brief-info {
+    margin-top: 6px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.info-label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+.info-val {
+    color: var(--text-primary);
+    font-weight: 500;
+}

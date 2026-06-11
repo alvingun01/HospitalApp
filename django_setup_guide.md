@@ -1458,3 +1458,463 @@ Allow a single user account to have multiple active profile models associated wi
    - The UI includes a role switcher (e.g., in the navbar) that toggles the client-side state between "Doctor View" and "Patient View".
 3. **Pros**: The user only needs a single login email and password.
 4. **Cons**: Significantly complicates backend authorization logic, as checking `request.user` permissions requires dynamically verifying the active context role of the request.
+
+---
+
+### Q61: Why does navigating to `/doctorHome` throw the user back to the home page (`/`)?
+There are three main issues causing this behavior:
+
+1. **Incorrect Controller Dependency Injection (`$state` vs `$location`)**:
+   In [doctorHomeController.js](file:///Users/alvin/Documents/HospitalApp/Frontend/controller/doctorHomeController.js), the controller was declared with the `$state` parameter:
+   ```javascript
+   angular.module("hospitalApp").controller("doctorHomeController", ["$scope", "httpService", "$state", function ($scope, httpService, $state) {
+   ```
+   Since the application is configured using `ngRoute` (not `ui-router`), `$state` is not a registered provider. This throws an `Unknown provider: $stateProvider` exception on controller instantiation. When AngularJS fails to load the controller, it aborts the route transition and falls back to the default route `/` configured in [app.js](file:///Users/alvin/Documents/HospitalApp/Frontend/app.js):
+   ```javascript
+   .otherwise({
+       redirectTo: "/"
+   })
+   ```
+
+2. **Hardcoded Redirection in LoginController**:
+   In [loginController.js](file:///Users/alvin/Documents/HospitalApp/Frontend/controller/loginController.js), a successful login always triggers:
+   ```javascript
+   $location.path("/");
+   ```
+   This redirects all users, including Doctors and Nurses, to the root route (`/`) which renders the patient dashboard.
+
+3. **Hash Routing Requirement**:
+   Because HTML5 routing mode is not enabled, the routing is hash-based. Direct URL navigation must be formatted as:
+   `http://localhost:3000/#!/doctorHome`
+   If you enter `http://localhost:3000/doctorHome` without the hash `#!`, the web server fails to find a physical file/directory, and either fails or returns `index.html` at the root `/`, causing the router to boot into the default `/` page.
+
+---
+
+### Q62: Is `JSON.parse($scope.currentDoctor)` necessary when retrieving the user from localStorage?
+Yes, this parsing is necessary, and there is a critical database ID distinction you must be aware of when using this value:
+
+1. **Why `JSON.parse` is necessary**:
+   Data stored in `localStorage` is serialized as a string. If you don't parse it, `$scope.currentDoctor` remains a plain string, and trying to access `$scope.currentDoctor.id` or `$scope.currentDoctor.role` will return `undefined`.
+
+   You can write this cleanly in a single line to handle empty states safely:
+   ```javascript
+   $scope.currentDoctor = JSON.parse(localStorage.getItem('user') || '{}');
+   ```
+
+2. **The User ID vs. Doctor Profile ID Warning**:
+   The object stored in `localStorage.getItem('user')` represents the **`CustomUser`** table record. 
+   * `$scope.currentDoctor.id` refers to the **`User` ID** (e.g. `3`).
+   * The backend's `Appointment` model filters appointments by **`DoctorProfile` ID**, which is a separate table and has its own primary key `id` (e.g. `1`).
+
+   If you directly pass the User ID (`$scope.currentDoctor.id`) to `getAppointmentsByDoctorId()`, it will look for a `DoctorProfile` with that ID, which might belong to a different doctor or not exist at all.
+
+   **Solution**: First retrieve the doctor profiles, find the profile belonging to the logged-in user, and then query the appointments:
+   ```javascript
+   httpService.getDoctors().then(function (response) {
+       const doctors = response.data;
+       const currentProfile = doctors.find(doc => doc.user && doc.user.id === $scope.currentDoctor.id);
+       
+       if (currentProfile) {
+           return httpService.getAppointmentsByDoctorId(currentProfile.id);
+       }
+   }).then(function (appResponse) {
+       // Handle appointment data here
+   });
+   ```
+
+---
+
+### Q63: How can we limit appointment queries in Django so doctors and patients only see their own records?
+To implement robust role-based access control (RBAC) in Django REST Framework, you should dynamically filter the query results within the ViewSet's `get_queryset()` method based on `self.request.user`.
+
+#### Proposed implementation:
+Update `get_queryset()` in [views.py](file:///Users/alvin/Documents/HospitalApp/Backend/api/views.py) as follows:
+
+```python
+class AppointmentViewSet(viewsets.ModelViewSet):
+    serializer_class = AppointmentSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        
+        # 1. Reject unauthenticated requests
+        if not user or not user.is_authenticated:
+            return Appointment.objects.none()
+            
+        queryset = Appointment.objects.all()
+
+        # 2. Limit records based on user role
+        if user.role == 'patient':
+            # Filter appointments where patient profile belongs to request.user
+            queryset = queryset.filter(patient__user=user)
+        elif user.role == 'doctor':
+            # Filter appointments where doctor profile belongs to request.user
+            queryset = queryset.filter(doctor__user=user)
+        # admins and nurses can view all appointments by default
+
+        # 3. Apply optional URL query parameters (if provided)
+        patient_id = self.request.query_params.get('patient')
+        doctor_id = self.request.query_params.get('doctor')
+        
+        if patient_id is not None:
+            queryset = queryset.filter(patient_id=patient_id)
+        if doctor_id is not None:
+            queryset = queryset.filter(doctor_id=doctor_id)
+
+        return queryset
+```
+
+#### Why this approach is highly secure:
+2. **Standard ORM Joins**: The double underscore notation (`patient__user=user`) traverses foreign key relationships to match the logged-in User profile seamlessly.
+
+---
+
+### Q64: How does `self` have access to the `request` object in Django REST Framework's ViewSet methods?
+In Python and Django, ViewSets (`ModelViewSet`) inherit from Class-Based Views (specifically `APIView` and `GenericAPIView`). The request binding happens automatically during the routing lifecycle:
+
+1. **Instantiation**:
+   When a URL matches a route, Django calls the viewset's `.as_view()` method. This method creates an instance of the ViewSet class (which becomes `self`).
+
+2. **Dispatch Phase**:
+   Django routes the HTTP request to the view's `.dispatch(request, *args, **kwargs)` method.
+
+3. **Request Wrapping & Binding**:
+   Inside Django REST Framework's `dispatch()` method:
+   - DRF wraps Django's standard `HttpRequest` in a custom DRF `Request` object (which handles query parameters via `.query_params` and JSON bodies via `.data`).
+   - DRF binds this wrapped request object to the viewset instance as an attribute:
+     ```python
+     self.request = request
+     ```
+   - Because `self.request` is set on the instance, **any method inside the class** (such as `get_queryset(self)`, `get_serializer_class(self)`, or custom actions) can access it using `self.request`.
+
+4. **Authentication Middleware**:
+   The `self.request.user` attribute is populated dynamically during the dispatch lifecycle by Django's and DRF's authentication classes (like TokenAuthentication). If the authentication is successful, `self.request.user` contains the authenticated user object; if not, it contains an `AnonymousUser` instance.
+
+---
+
+### Q65: Is there a `patient__user` column in the database when filtering `patient__user=user`?
+**No**, there is no `patient__user` column in the database. 
+
+Instead, Django ORM uses the double underscore (`__`) syntax to traverse model relationships by performing SQL `JOIN` operations:
+
+#### Database Schema Layout:
+1. **`api_appointment` table**:
+   Contains a `patient_id` foreign key column referencing the primary key of the `api_patientprofile` table.
+2. **`api_patientprofile` table**:
+   Contains a `user_id` foreign key column referencing the primary key of the custom user table (`auth_user` or similar).
+
+#### How the ORM translates `patient__user=user`:
+When you execute `queryset.filter(patient__user=user)`, Django translates it into a join:
+1. Join `api_appointment` with `api_patientprofile` where `api_appointment.patient_id = api_patientprofile.id`.
+2. Filter the result where `api_patientprofile.user_id = user.id`.
+
+The actual generated raw SQL query looks like this:
+```sql
+SELECT * 
+FROM api_appointment
+INNER JOIN api_patientprofile ON (api_appointment.patient_id = api_patientprofile.id)
+WHERE api_patientprofile.user_id = <user_id>;
+```
+
+This abstraction allows you to write database queries cleanly in Python without writing manual JOIN SQL code.
+
+---
+
+### Q66: Why does `queryset.filter(doctor_id=user.id)` return no appointments?
+This returns an empty queryset due to a mismatch between **User ID** and **DoctorProfile ID**:
+
+1. **The Core Issue**:
+   * `user.id` is the primary key of the **`CustomUser`** model (e.g., `3`).
+   * `doctor_id` is the foreign key to the **`DoctorProfile`** model (e.g., `1`).
+   * By calling `queryset.filter(doctor_id=user.id)`, you query appointments where `doctor_id = 3`. However, the logged-in doctor's profile ID is `1` (even though their user ID is `3`), resulting in empty results.
+
+2. **The Correct Query (Relational Joins)**:
+   To filter by the user object directly, use double-underscore relationship traversal:
+   ```python
+   # Correct approach for doctors
+   queryset = queryset.filter(doctor__user=user)
+
+   # Correct approach for patients
+   queryset = queryset.filter(patient__user=user)
+   ```
+
+3. **Asynchronous JavaScript Warning**:
+   In [doctorHomeController.js](file:///Users/alvin/Documents/HospitalApp/Frontend/controller/doctorHomeController.js), the profile fetch is asynchronous, but the appointments request is called immediately outside the promise callback:
+   ```javascript
+   // ❌ BUG: doctorProfile is empty when getAppointmentsByDoctorId is called
+   httpService.getDoctors().then(function (response) {
+       $scope.doctorProfile = response.data[0];
+   });
+
+   httpService.getAppointmentsByDoctorId($scope.doctorProfile.id) // $scope.doctorProfile.id is undefined!
+   ```
+   **Solution**: Since the backend automatically filters querysets by `request.user` on `/api/appointments/`, the frontend doesn't need to specify `doctorProfile.id` at all. Simply call `getAppointments()` (without parameters) and the backend will securely isolate and return only that logged-in doctor's appointments.
+
+---
+
+### Q67: Why does Django use `doctor__user=user` instead of `doctor.user=user` when filtering querysets?
+This is due to **Python syntax limitations** and **Django ORM design choices**:
+
+1. **Python Syntax Restrictions**:
+   When you filter queries in Django, you call a method and pass keyword arguments, e.g. `filter(name=value)`.
+   In Python, parameter names in keyword arguments are treated as identifiers. Having a dot (`.`) inside a parameter name is **syntactically invalid Python**:
+   ```python
+   # ❌ SyntaxError: expression cannot contain assignment, perhaps you meant "=="?
+   queryset.filter(doctor.user=user)
+   ```
+   To bypass this constraint and represent traversals through multiple tables, Django's designers chose the double underscore (`__`) as their relationship path separator.
+
+2. **Differentiating Queries from memory access**:
+   * **In Queries (ORM/Database level)**: Use `__` to specify relationships to be joined in SQL:
+     ```python
+     # Translates into SQL JOINs
+     Appointment.objects.filter(doctor__user=user)
+     ```
+   * **In Memory (Python object level)**: Use the dot (`.`) to access attributes on objects that have already been fetched and instantiated in memory:
+     ```python
+     # Evaluated in Python memory
+     if appointment.doctor.user == user:
+         print("This is the doctor's user account")
+     ```
+
+---
+
+### Q68: Why does the doctor dashboard crash with `TypeError: Cannot read properties of undefined (reading 'first_name')`?
+This error is caused by a variable lookup bug inside [doctorHomeController.js](file:///Users/alvin/Documents/HospitalApp/Frontend/controller/doctorHomeController.js):
+
+1. **The Bug**:
+   ```javascript
+   patientApps.forEach(app => {
+       const doctor = response.data.find(doc => doc.id === app.doctor);
+       app.doctorName = doctor ? `${doctor.user.first_name} ${doctor.user.last_name}` : 'Unknown Doctor';
+   });
+   ```
+   * Here, `response.data` is the list of **Appointments**, not the list of **Doctors**.
+   * When calling `response.data.find(...)`, the code searches for an `Appointment` object whose ID matches the doctor's ID.
+   * If an `Appointment` object is found, it is assigned to the variable `doctor`. However, `Appointment` models in the database do not have a `user` property (unlike `DoctorProfile`), so `doctor.user` resolves to `undefined`.
+   * Trying to read `doctor.user.first_name` throws the `Cannot read properties of undefined (reading 'first_name')` error.
+
+2. **The Logic Bug with Dates**:
+   The controller parses dates using:
+   ```javascript
+   const appTime = new Date(app.appointment_datetime);
+   ```
+   Since the backend model field is named `appointment_date` (not `appointment_datetime`), this evaluates to `new Date(undefined)` which creates an invalid date object and breaks sorting and display format calculations.
+
+3. **Dashboard Context Mapping (Patient Names)**:
+   On a doctor's dashboard, the doctor already knows their own name. Instead, the UI needs to display the **Patient's name** for each appointment.
+   To do this, the controller should:
+   - Load patient profiles using `httpService.getPatients()`.
+   - Build a patient lookup map: `$scope.patientsMap[patient.id] = name`.
+   - Map `app.patientName = $scope.patientsMap[app.patient]`.
+
+---
+
+### Q69: How is the custom `doctorAppCard` component configured to show patient information?
+To display detailed patient profiles on the doctor dashboard, we implement the following:
+
+1. **JavaScript Component Declaration**:
+   Register `doctorAppCard` inside `DoctorAppCard.js`. Ensure that the `templateUrl` is correctly relative to the project root:
+   ```javascript
+   angular.module("hospitalApp").component("doctorAppCard", {
+       bindings: {
+           appointment: "<" // One-way binding
+       },
+       templateUrl: "components/DoctorAppCard.html"
+   });
+   ```
+
+2. **Controller Pre-mapping**:
+   Modify [doctorHomeController.js](file:///Users/alvin/Documents/HospitalApp/Frontend/controller/doctorHomeController.js) to resolve the patient profile details (name, email, phone, location) asynchronously, binding them to `$ctrl.appointment.patientDetails` for immediate access inside the card.
+
+3. **Card Component Layout**:
+   Design [DoctorAppCard.html](file:///Users/alvin/Documents/HospitalApp/Frontend/components/DoctorAppCard.html) to render metadata blocks:
+- **Diagnosis/Clinical Block**: Showing previous clinical diagnoses if present.
+
+---
+
+### Q70: How are route parameters, nested fetches, and role-based controls integrated on the Appointment Details page?
+Designing a detailed view with contextual action permissions (e.g. patients viewing info vs doctors updating diagnosis/status) requires three architectural practices:
+
+1. **Extracting Route Parameters (`$routeParams`)**:
+   By registering the path with a route parameter placeholder (e.g. `path("/appointmentDetails/:appointmentId")` in `app.js`), AngularJS parses URL variables and binds them to the `$routeParams` service in the matching controller:
+   ```javascript
+   $scope.appointmentId = $routeParams.appointmentId;
+   ```
+
+2. **Chaining Nested Asynchronous Calls**:
+   Because the main `Appointment` query only yields database primary keys (IDs) for patient and doctor, the controller must run secondary queries sequentially to build detailed profile payloads:
+   ```javascript
+   // Fetch main appointment
+   httpService.getAppointment($scope.appointmentId).then(function(response) {
+       $scope.appointment = response.data;
+       // Fetch linked patient profile
+       return httpService.getPatient(response.data.patient);
+   }).then(function(patientResponse) {
+       $scope.appointment.patientDetails = patientResponse.data;
+       // Fetch linked doctor profile
+       return httpService.getDoctor($scope.appointment.doctor);
+   }).then(function(doctorResponse) {
+       $scope.appointment.doctorDetails = doctorResponse.data;
+   });
+   ```
+
+3. **Role-Based Dynamic Interfaces (`ng-if`)**:
+   To prevent patients from editing clinical notes or completing their own sessions, wrap control features in permission boundaries matching the session user's role payload:
+   * **Doctor Portal Controls (`ng-if="currentUser.role === 'doctor'"`)**: Renders textarea forms bound to `$parent.diagnosisInput` (to respect child scope variables inside templates) along with completion/cancellation buttons.
+   * **Patient Portal Controls (`ng-if="currentUser.role === 'patient'"`)**: Renders cancellation/rescheduling action warnings without administrative/clinical forms.
+
+---
+
+### Q71: How should we supply the data payload to `httpService.putAppointments()` when updating appointment status or details?
+When sending data updates (like changing the appointment status to `"Cancelled"` or `"Completed"`) to a Django REST Framework ViewSet, there are two primary methods:
+
+#### Method A: Map a Clean PUT Payload (Recommended for `PUT` requests)
+Since `$scope.appointment` contains extra properties added in the controller (such as `patientDetails` and `doctorDetails`), passing `$scope.appointment` directly sends a bloated payload. While DRF ignores unknown fields, passing a clean object containing only the fields defined in the database serializer is best practice:
+
+```javascript
+const payload = {
+    patient: $scope.appointment.patient,            // Patient profile ID
+    doctor: $scope.appointment.doctor,              // Doctor profile ID
+    appointment_date: $scope.appointment.appointment_date,
+    appointment_status: $scope.appointment.appointment_status,
+    diagnosis: $scope.appointment.diagnosis || "",
+    total_bills: $scope.appointment.total_bills || 0.00,
+    paid: $scope.appointment.paid || false
+};
+
+httpService.putAppointments($scope.appointmentId, payload);
+```
+
+#### Method B: Use a partial update (PATCH)
+If you only need to modify one or two fields (such as `appointment_status`), you can use a `PATCH` request. This avoids validating all other fields (like date/time formats) on the server.
+1. Add `patchAppointment` to `httpService.js`:
+   ```javascript
+   patchAppointment(id, data) {
+       return $http.patch(`${BASE_URL}/appointments/${id}/`, data);
+   }
+   ```
+2. Call it in your controller:
+   ```javascript
+   httpService.patchAppointment($scope.appointmentId, { 
+       appointment_status: "Cancelled" 
+   });
+   ```
+
+---
+
+### Q72: Why don't we need to specify `?appointmentId=${id}` when retrieving a single appointment via `/api/appointments/${id}/`?
+This is the core difference between **REST Path Parameters** (Detail view) and **URL Query Parameters** (List/Filter view):
+
+1. **REST Detail Route (Path Parameter)**:
+   The URL `/api/appointments/${id}/` tells the server: *"Give me the specific single resource residing at index `${id}`"*.
+   * Django REST Framework views (`ModelViewSet`) automatically maps URLs containing `/appointments/<pk>/` to the `retrieve()` action.
+   * DRF extracts the ID directly from the URL path as a primary key variable, queries the database, and returns a single **JSON Object** `{ ... }`.
+
+2. **REST List/Query Route (Query Parameter)**:
+   The URL `/api/appointments/?id=${id}` tells the server: *"Give me the general list collection of all appointments, but filter the collection where ID is `${id}`"*.
+   * Django maps this to the `list()` action.
+   * Unless you configure the backend views to look for `?id=...` parameters, Django ignores it and returns a **JSON Array** `[ ... ]` containing all appointments.
+
+3. **Comparison Summary**:
+   | Request Style | API Action | Response Type | Example Payload |
+   | :--- | :--- | :--- | :--- |
+   | `/api/appointments/5/` | `retrieve()` | Object | `{ "id": 5, "patient": 2 ... }` |
+   | `/api/appointments/?patient=2` | `list()` | Array | `[ { "id": 5, ... }, { "id": 6, ... } ]` |
+
+---
+
+### Q73: If we want the backend to filter list endpoints by a query parameter, how is the request sent and how should the views be coded?
+If you choose to fetch resources by a query parameter instead of using path parameters (e.g. fetching by `?appointmentId=5` instead of `/5/`), you must match the parameter keys on both sides and parse the collection array in your frontend.
+
+#### 1. Frontend: How to send the Request
+Form the URL using `?key=value`. The key must exactly match the key parsed in Django:
+* **Service Method (`httpService.js`)**:
+  ```javascript
+  getAppointmentById(appointmentId) {
+      // 🚀 The query key is "appointmentId" to match the backend python view
+      return $http.get(`${BASE_URL}/appointments/?appointmentId=${appointmentId}`);
+  }
+  ```
+* **Controller handler (`appointmentDetails.js`)**:
+  Because list endpoints always wrap returned records in a JSON list (array), the controller must extract the first index:
+  ```javascript
+  httpService.getAppointmentById($scope.appointmentId).then(function (response) {
+      // 🚀 Extract the first item from the array [ { ... } ]
+      $scope.appointment = response.data[0]; 
+  });
+  ```
+
+#### 2. Backend: How the Viewset is coded (`views.py`)
+In `get_queryset(self)`, retrieve the parameter using `self.request.query_params.get('key')` and apply the filter:
+```python
+class AppointmentViewSet(viewsets.ModelViewSet):
+    serializer_class = AppointmentSerializer
+
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Appointment.objects.all()
+
+        # Enforce security boundaries
+        if user.role == 'patient':
+            queryset = queryset.filter(patient__user=user)
+        elif user.role == 'doctor':
+            queryset = queryset.filter(doctor__user=user)
+
+        # 🚀 Parse and apply the query parameter filter
+        appointment_id = self.request.query_params.get('appointmentId')
+        if appointment_id is not None:
+            queryset = queryset.filter(id=appointment_id)
+
+        return queryset
+```
+
+---
+
+### Q74: How are multiple query parameters structured in HTTP requests and parsed on the backend?
+To construct and extract multiple query parameters (e.g. filtering appointments by both doctor ID and status), use the following patterns:
+
+#### 1. Frontend: How to send the Request (Constructing URL with `&`)
+Query parameters are joined together using the ampersand (`&`) symbol:
+`URL?param1=value1&param2=value2`
+
+* **Option A: Manual string interpolation**:
+  ```javascript
+  getAppointmentsFiltered(doctorId, status) {
+      return $http.get(`${BASE_URL}/appointments/?doctor=${doctorId}&status=${status}`);
+  }
+  ```
+
+* **Option B: Using `$http` `params` config object (Recommended)**:
+  AngularJS allows passing a `params` object, which handles URL serialization, character encoding, and automatically strips out `undefined` fields:
+  ```javascript
+  getAppointmentsFiltered(doctorId, status) {
+      return $http.get(`${BASE_URL}/appointments/`, {
+          params: {
+              doctor: doctorId,
+              status: status
+          }
+      });
+  }
+  ```
+
+#### 2. Backend: How the View is coded (`views.py`)
+In `get_queryset(self)`, retrieve each query parameter individually and chain the Django ORM filters. Because Django querysets are lazily evaluated, chaining multiple filters compiles down to a single SQL query:
+
+```python
+    def get_queryset(self):
+        user = self.request.user
+        queryset = Appointment.objects.all()
+
+        # 1. Retrieve all parameters
+        doctor_id = self.request.query_params.get('doctor')
+        status = self.request.query_params.get('status')
+
+        # 2. Dynamically apply filters if they are provided
+        if doctor_id is not None:
+            queryset = queryset.filter(doctor_id=doctor_id)
+        if status is not None:
+            queryset = queryset.filter(appointment_status=status)
+
+        return queryset
+```

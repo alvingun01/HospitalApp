@@ -1,0 +1,172 @@
+<div class="home-container">
+    <!-- Header Nav Area -->
+    <div class="header-nav">
+        <button class="btn-primary btn-sm" ng-click="backToDashboard()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
+            Back to Dashboard
+        </button>
+
+        <div class="nav-actions">
+            <button ng-click="logout()" class="btn-danger">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- Error/Alert Banners -->
+    <div class="app-diagnosis" style="border-left-color: var(--primary); margin-bottom: 20px;" ng-if="error">
+        {{ error }}
+    </div>
+
+    <!-- Loading State -->
+    <div class="no-app-placeholder" ng-if="loading">
+        Loading appointment details...
+    </div>
+
+    <!-- Details Content Grid -->
+    <div class="dashboard-columns" ng-if="!loading && appointment" style="grid-template-columns: 1.2fr 0.8fr;">
+
+        <!-- Main Details Column -->
+        <div class="dashboard-col">
+            <h2 class="col-heading">Appointment Details</h2>
+
+            <div class="patient-brief-info" style="gap: 12px; padding: 20px;">
+                <div class="info-row">
+                    <span class="info-label" style="font-size: 15px;">Appointment Date:</span>
+                    <span class="info-val" style="font-size: 15px;">{{ getAppointmentDate() }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label" style="font-size: 15px;">Appointment Time:</span>
+                    <span class="info-val" style="font-size: 15px;">{{ getAppointmentTime() }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label" style="font-size: 15px;">Status:</span>
+                    <span class="status-badge {{ getStatusClass() }}">{{ appointment.appointment_status }}</span>
+                </div>
+
+                <!-- Diagnosis Block (Read Only) -->
+                <div class="app-diagnosis" style="margin-top: 10px; width: 100%;" ng-if="appointment.diagnosis">
+                    <strong>Diagnosis:</strong> {{ appointment.diagnosis }}
+                </div>
+            </div>
+
+            <!-- Patient Information -->
+            <h2 class="col-heading" style="margin-top: 24px;">Patient Information</h2>
+            <div class="patient-brief-info" style="gap: 12px; padding: 20px;" ng-if="appointment.patientDetails">
+                <div class="info-row">
+                    <span class="info-label">Full Name:</span>
+                    <span class="info-val">{{ appointment.patientDetails.user.first_name }} {{
+                        appointment.patientDetails.user.last_name }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email Address:</span>
+                    <span class="info-val">{{ appointment.patientDetails.user.email }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Phone Number:</span>
+                    <span class="info-val">{{ appointment.patientDetails.phone || 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Address:</span>
+                    <span class="info-val">{{ appointment.patientDetails.address || 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">City/State:</span>
+                    <span class="info-val">
+                        {{ appointment.patientDetails.city || '' }}
+                        <span ng-if="appointment.patientDetails.city && appointment.patientDetails.state">, </span>
+                        {{ appointment.patientDetails.state || '' }}
+                        <span ng-if="!appointment.patientDetails.city && !appointment.patientDetails.state">N/A</span>
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Zip Code / Country:</span>
+                    <span class="info-val">
+                        {{ appointment.patientDetails.zip_code || '' }}
+                        <span ng-if="appointment.patientDetails.zip_code && appointment.patientDetails.country"> |
+                        </span>
+                        {{ appointment.patientDetails.country || '' }}
+                        <span
+                            ng-if="!appointment.patientDetails.zip_code && !appointment.patientDetails.country">N/A</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Management Sidebar (Visible for Doctors) -->
+        <div class="dashboard-col" ng-if="currentUser.role === 'doctor'">
+            <h2 class="col-heading">Manage Appointment</h2>
+
+            <!-- Diagnosis Form -->
+            <form ng-submit="addDiagnosis()" style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
+                <div class="form-group" style="display: flex; flex-direction: column; gap: 6px;">
+                    <label class="info-label" style="font-weight: 600;">Diagnosis Notes</label>
+                    <textarea ng-model="$parent.diagnosisInput" class="form-input" rows="5"
+                        placeholder="Enter clinical observations, prescription, and notes..."
+                        style="width: 100%; padding: 12px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary); resize: vertical;"
+                        required>
+                    </textarea>
+                </div>
+                <button type="submit" class="btn-primary" style="margin-top: 4px;">
+                    Save Diagnosis
+                </button>
+            </form>
+
+            <div
+                style="border-top: 1px solid rgba(255,255,255,0.1); margin-top: 16px; padding-top: 16px; display: flex; flex-direction: column; gap: 10px; width: 100%;">
+                <label class="info-label" style="font-weight: 600; margin-bottom: 4px;">Update Status</label>
+
+                <!-- Complete Action Button -->
+                <button class="btn-primary"
+                    style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-color: #10b981;"
+                    ng-click="completeAppointment()"
+                    ng-if="appointment.appointment_status !== 'Completed' && appointment.appointment_status !== 'Cancelled'">
+                    Mark as Completed
+                </button>
+
+                <!-- Cancel Action Button -->
+                <button class="btn-danger" ng-click="cancelAppointment()"
+                    ng-if="appointment.appointment_status !== 'Cancelled' && appointment.appointment_status !== 'Completed'">
+                    Cancel Appointment
+                </button>
+            </div>
+        </div>
+
+        <!-- Patient Actions Sidebar (Visible for Patients) -->
+        <div class="dashboard-col" ng-if="currentUser.role === 'patient'">
+            <h2 class="col-heading">Appointment Control</h2>
+
+            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
+                <p class="info-label" style="font-size: 13px; line-height: 1.6;">
+                    You are registered as the patient for this appointment. You may cancel this booking if needed, prior
+                    to the scheduled date and time.
+                </p>
+
+                <button class="btn-danger" ng-click="cancelAppointment()"
+                    ng-if="appointment.appointment_status !== 'Cancelled' && appointment.appointment_status !== 'Completed'">
+                    Cancel Booking
+                </button>
+
+                <div class="no-app-placeholder" style="padding: 12px;"
+                    ng-if="appointment.appointment_status === 'Completed'">
+                    This appointment has already been completed.
+                </div>
+                <div class="no-app-placeholder" style="padding: 12px;"
+                    ng-if="appointment.appointment_status === 'Cancelled'">
+                    This appointment has been cancelled.
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

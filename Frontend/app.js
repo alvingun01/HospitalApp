@@ -36,6 +36,10 @@ app.config(["$routeProvider", "$httpProvider", function ($routeProvider, $httpPr
             templateUrl: "views/register.html",
             controller: "RegisterController"
         })
+        .when("/doctorHome", {
+            templateUrl: "views/doctorHome.html",
+            controller: "doctorHomeController"
+        })
         .when("/doctors", {
             templateUrl: "views/doctors.html"
         })
@@ -45,6 +49,10 @@ app.config(["$routeProvider", "$httpProvider", function ($routeProvider, $httpPr
         .when("/appointment", {
             templateUrl: "views/appointment.html",
             controller: "AppointmentController"
+        })
+        .when("/appointmentDetails/:appointmentId", {
+            templateUrl: "views/appointmentDetails.html",
+            controller: "appointmentDetailsController"
         })
         .otherwise({
             redirectTo: "/"
